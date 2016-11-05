@@ -18,7 +18,7 @@ void Flock::Run()
 {
 	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
 	{
-		it->Run();
+		it->Run(_boids);
 	}
 }
 void Flock::AddBoids(Boid b)
@@ -27,16 +27,6 @@ void Flock::AddBoids(Boid b)
 	std::cout << "Boid Vector count: " << _boids.size() << std::endl;
 }
 
-//void Flock::Setup()
-//{
-//	// setup all boids
-//	
-//}
-//
-//void Flock::Update() 
-//{
-//	// for each boid in list of boids update position, handle seperation, cohesion & alignment
-//}
 void Flock::Render()
 {
 	// for each boid in list of boids render

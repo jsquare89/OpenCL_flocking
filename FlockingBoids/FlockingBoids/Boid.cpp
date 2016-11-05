@@ -13,9 +13,11 @@ void Boid::Setup(float x, float y)
 	float angle = (float)(rand() % 360 + 1)*(M_PI / 180);
 	_velocity = PVector{ (float)cos(angle),(float)sin(angle) };
 	_position = PVector{ x, y };
-	_r = 2.0;
-	_maxSpeed = 2;
-	_maxForce = 0.09;
+	_r = 1;
+	_maxSpeed = 0.001;
+	_maxForce = 0.9;
+	_width = 1;
+	_height = 1;
 
 	_vboID = 0;
 	if (_vboID == 0)
@@ -57,17 +59,166 @@ Boid::~Boid()
 	}
 }
 
-void Boid::Run()
+void Boid::Run(std::vector<Boid> &boids)
 {
-	
+	Flock(boids);
+	Update();
+	Borders();
+}
+
+void Boid::Flock(std::vector<Boid> &boids)
+{
+	// get new acceleration based on 3 rules
+	PVector sep = Seperation(boids);
+	PVector ali = Align(boids);
+	PVector coh = Cohesion(boids);
+	// arbitrarily weight these forces
+	sep.mult(0.15);
+	ali.mult(0.1);
+	coh.mult(0.1);
+	// Apply force to acceleration
+	ApplyForce(sep);
+	ApplyForce(ali);
+	ApplyForce(coh);
 }
 
 void Boid::Update()
 {
 	_velocity.add(_acceleration);
+	_velocity.limit(_maxSpeed);
+	_position.add(_velocity);
+	_acceleration.mult(0); // Reset acceleration
 }
+
+void Boid::Borders()
+{
+	if (_position.x < -_r) _position.x = _width + _r;
+	if (_position.y < -_r) _position.y = _height + _r;
+	if (_position.x > _width + _r) _position.x = -_r;
+	if (_position.y > _height + _r) _position.y = -_r;
+}
+
+void Boid::ApplyForce(PVector force)
+{
+	_acceleration.add(force);
+}
+
+PVector Boid::Seek(PVector target)
+{
+	PVector desired = PVector().sub(target, _position);
+	desired.normalize();
+	desired.mult(_maxSpeed);
+
+	PVector steer = PVector().sub(desired, _velocity);
+	steer.limit(_maxForce);
+	return steer;	
+}
+
+PVector Boid::Seperation(std::vector<Boid> &boids)
+{
+	float desiredSep = 1.0f;
+	PVector steer{ 0,0 };
+	int count = 0;
+	// check each boid in ssystem, check if its close
+	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
+	{
+		// get distance of neighbor
+		float d = PVector().dist(_position, neighborItr->_position);
+		if ((d > 0) && (d < desiredSep))
+		{
+			// Calculate vector point away from neighbor
+			PVector diff = PVector().sub(_position, neighborItr->_position);
+			diff.normalize();
+			diff.div(d); // weight by diff
+			steer.add(diff);
+			count++; // Keep track of how many
+		}
+		// Average -- dive by amount
+		if (count > 0)
+		{
+			steer.div((float)count);
+		}
+
+		if (steer.mag() > 0)
+		{
+			steer.normalize();
+			steer.mult(_maxSpeed);
+			steer.sub(_velocity);
+			steer.limit(_maxForce);
+		}
+		return steer;
+	}
+}
+
+PVector Boid::Align(std::vector<Boid> &boids)
+{
+	float neighborDist = 5;
+	PVector sum = PVector{ 0, 0 };
+	int count = 0;
+	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
+	{
+		float d = PVector().dist(_position, neighborItr->_position);
+		if ((d > 0) && (d < neighborDist)) 
+		{
+			sum.add(neighborItr->_velocity);
+			count++;
+		}
+	}
+	if (count > 0) {
+		sum.div((float)count);
+		// First two lines of code below could be condensed with new PVector setMag() method
+		// Not using this method until Processing.js catches up
+		// sum.setMag(maxspeed);
+
+		// Implement Reynolds: Steering = Desired - Velocity
+		sum.normalize();
+		sum.mult(_maxSpeed);
+		PVector steer = PVector().sub(sum, _velocity);
+		steer.limit(_maxForce);
+		return steer;
+	}
+	else {
+		return PVector{ 0, 0 };
+	}
+}
+
+PVector Boid::Cohesion(std::vector<Boid> &boids)
+{
+	float neighborDist = 5;
+	PVector sum = PVector{ 0, 0 };
+	int count = 0;
+	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
+	{
+		float d = PVector().dist(_position, neighborItr->_position);
+		if ((d > 0) && (d < neighborDist))
+		{
+			sum.add(neighborItr->_position);
+			count++;
+		}
+	}
+	if (count > 0)
+	{
+		sum.div(count);
+		return Seek(sum);
+	}
+	else
+	{
+		return PVector{ 0,0 };
+	}
+}
+
 void Boid::Render()
 {
+
+	_vertexData[0].position.x = _position.x;
+	_vertexData[0].position.y = _position.y + 0.03;
+
+	_vertexData[1].position.x = _position.x + 0.015;
+	_vertexData[1].position.y = _position.y - 0.03;
+
+	_vertexData[2].position.x = _position.x - 0.015;
+	_vertexData[2].position.y = _position.y - 0.03;
+
 	glBindBuffer(GL_ARRAY_BUFFER, _vboID);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(_vertexData), _vertexData, GL_STATIC_DRAW);
 

@@ -78,6 +78,7 @@ void Flocking::gameLoop()
 	{
 		processInput();
 		_time += 0.01;
+		_pflock->Run();
 		Render();
 	}
 }
@@ -101,7 +102,7 @@ void Flocking::processInput()
 
 void Flocking::SetupFlock()
 {
-	_flockNums = 300;
+	_flockNums = 1;
 	for (int i = 0; i < _flockNums; i++)
 	{
 		Boid* boid = new Boid();
