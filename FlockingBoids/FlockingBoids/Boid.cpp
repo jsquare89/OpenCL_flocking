@@ -4,7 +4,7 @@
 
 Boid::Boid()
 {
-	Setup(0.0f, 0.0f);
+	Setup(640, 360);
 }
 
 void Boid::Setup(float x, float y)
@@ -14,7 +14,7 @@ void Boid::Setup(float x, float y)
 	_velocity = PVector{ (float)cos(angle),(float)sin(angle) };
 	_position = PVector{ x, y };
 	_r = 1;
-	_maxSpeed = 0.001;
+	_maxSpeed = 1.0;
 	_maxForce = 0.9;
 	_width = 1;
 	_height = 1;
@@ -59,48 +59,51 @@ Boid::~Boid()
 	}
 }
 
-void Boid::Run(std::vector<Boid> &boids)
+void Boid::Run(std::vector<Boid> &boids, Boid &leader)
 {
-	Flock(boids);
+	Flock(boids, leader);
 	Update();
 	Borders();
 }
 
-void Boid::Flock(std::vector<Boid> &boids)
+void Boid::Flock(std::vector<Boid> &boids, Boid &leader)
 {
 	// get new acceleration based on 3 rules
-	PVector sep = Seperation(boids);
-	PVector ali = Align(boids);
-	PVector coh = Cohesion(boids);
-	// arbitrarily weight these forces
-	sep.mult(0.15);
-	ali.mult(0.1);
-	coh.mult(0.1);
-	// Apply force to acceleration
-	ApplyForce(sep);
-	ApplyForce(ali);
-	ApplyForce(coh);
+	//PVector sep = Seperation(boids);
+	
+	PVector seek = Seek(leader._position);
+	//sep.mult(5);
+	//ApplyForce(sep);
+	ApplyForce(seek);
 }
 
 void Boid::Update()
 {
 	_velocity.add(_acceleration);
 	_velocity.limit(_maxSpeed);
+	
+	PVector newVelocity = PVector{ _velocity.x / (1240 / 2), _velocity.y / (720 / 2) };
 	_position.add(_velocity);
 	_acceleration.mult(0); // Reset acceleration
 }
 
 void Boid::Borders()
 {
-	if (_position.x < -_r) _position.x = _width + _r;
-	if (_position.y < -_r) _position.y = _height + _r;
-	if (_position.x > _width + _r) _position.x = -_r;
-	if (_position.y > _height + _r) _position.y = -_r;
+	if (_position.x < 0) _position.x = 1280;
+	else if (_position.y < 0) _position.y = 720;
+	else if (_position.x > 1280) _position.x = 0;
+	else if (_position.y > 720) _position.y = 0;
 }
 
 void Boid::ApplyForce(PVector force)
 {
 	_acceleration.add(force);
+}
+
+void Boid::Wander()
+{
+	Update();
+	Borders();
 }
 
 PVector Boid::Seek(PVector target)
@@ -116,7 +119,7 @@ PVector Boid::Seek(PVector target)
 
 PVector Boid::Seperation(std::vector<Boid> &boids)
 {
-	float desiredSep = 1.0f;
+	float desiredSep = 40.0f;
 	PVector steer{ 0,0 };
 	int count = 0;
 	// check each boid in ssystem, check if its close
@@ -210,14 +213,14 @@ PVector Boid::Cohesion(std::vector<Boid> &boids)
 void Boid::Render()
 {
 
-	_vertexData[0].position.x = _position.x;
-	_vertexData[0].position.y = _position.y + 0.03;
+	_vertexData[0].position.x = _position.x / (1280/2) - 1;
+	_vertexData[0].position.y = _position.y / (720/2) - 1 + 0.03;
 
-	_vertexData[1].position.x = _position.x + 0.015;
-	_vertexData[1].position.y = _position.y - 0.03;
+	_vertexData[1].position.x = _position.x / (1280 / 2) - 1 + 0.015;
+	_vertexData[1].position.y = _position.y / (720 / 2) - 1 - 0.03;
 
-	_vertexData[2].position.x = _position.x - 0.015;
-	_vertexData[2].position.y = _position.y - 0.03;
+	_vertexData[2].position.x = _position.x / (1280 / 2) - 1 - 0.015;
+	_vertexData[2].position.y = _position.y / (720 / 2) - 1 - 0.03;
 
 	glBindBuffer(GL_ARRAY_BUFFER, _vboID);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(_vertexData), _vertexData, GL_STATIC_DRAW);

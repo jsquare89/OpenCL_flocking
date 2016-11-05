@@ -14,7 +14,7 @@ public:
 	void Render();
 	
 private:
-	Boid _boid;
+	Boid _boidLeader;
 	std::vector<Boid> _boids;
 
 };

@@ -16,17 +16,18 @@ public:
 
 	void Setup(float x, float y);
 	void Render();
-	void Run(std::vector<Boid> &boids);
-	void Flock(std::vector<Boid> &boids);
+	void Run(std::vector<Boid> &boids, Boid &leader);
+	void Flock(std::vector<Boid> &boids, Boid &leader);
+	void Update();
 	void Borders();
 	void ApplyForce(PVector force);
 
+	void Wander();
 	PVector Seek(PVector target);
 	PVector Seperation(std::vector<Boid> &boids);
 	PVector Align(std::vector<Boid> &boids);
 	PVector Cohesion(std::vector<Boid> &boids);
 private:
-	void Update();
 
 	PVector _position;
 	PVector _velocity;

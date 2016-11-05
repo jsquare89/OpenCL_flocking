@@ -2,12 +2,12 @@
 
 #include "Flocking.h"
 #include "Errors.h"
-
+#include <CL\cl.h>
 #include <iostream>
 #include <string>
 
 
-Flocking::Flocking() : _screenWidth(1240),
+Flocking::Flocking() : _screenWidth(1280),
 _screenHeight(720),
 _time(0.0f),
 _window(nullptr),
@@ -102,7 +102,7 @@ void Flocking::processInput()
 
 void Flocking::SetupFlock()
 {
-	_flockNums = 1;
+	_flockNums = 300;
 	for (int i = 0; i < _flockNums; i++)
 	{
 		Boid* boid = new Boid();
