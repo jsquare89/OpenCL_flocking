@@ -14,7 +14,7 @@ void Boid::Setup(float x, float y)
 	_velocity = PVector{ (float)cos(angle),(float)sin(angle) };
 	_position = PVector{ x, y };
 	_r = 1;
-	_maxSpeed = 0.001;
+	_maxSpeed = 2;
 	_maxForce = 0.9;
 	_width = 1;
 	_height = 1;
@@ -68,34 +68,36 @@ void Boid::Run(std::vector<Boid> &boids)
 
 void Boid::Flock(std::vector<Boid> &boids)
 {
-	// get new acceleration based on 3 rules
+	//// get new acceleration based on 3 rules
 	PVector sep = Seperation(boids);
 	PVector ali = Align(boids);
 	PVector coh = Cohesion(boids);
 	// arbitrarily weight these forces
-	sep.mult(0.15);
-	ali.mult(0.1);
-	coh.mult(0.1);
+	sep.mult(1.5);
+	ali.mult(1.0);
+	coh.mult(1.0);
 	// Apply force to acceleration
 	ApplyForce(sep);
 	ApplyForce(ali);
 	ApplyForce(coh);
+	//ApplyForce(PVector{ 0.1f,0.1f });
 }
 
 void Boid::Update()
 {
 	_velocity.add(_acceleration);
 	_velocity.limit(_maxSpeed);
-	_position.add(_velocity);
+	PVector newVel = PVector{ _velocity.x / (1280 / 2), _velocity.y / (720 / 2) };
+	_position.add(newVel);
 	_acceleration.mult(0); // Reset acceleration
 }
 
 void Boid::Borders()
 {
-	if (_position.x < -_r) _position.x = _width + _r;
-	if (_position.y < -_r) _position.y = _height + _r;
-	if (_position.x > _width + _r) _position.x = -_r;
-	if (_position.y > _height + _r) _position.y = -_r;
+	if (_position.x < -_width) _position.x = _width;
+	else if (_position.y < -_height) _position.y = _height;
+	else if (_position.x > _width) _position.x = -_width;
+	else if (_position.y > _height) _position.y = -_height;
 }
 
 void Boid::ApplyForce(PVector force)
@@ -116,7 +118,7 @@ PVector Boid::Seek(PVector target)
 
 PVector Boid::Seperation(std::vector<Boid> &boids)
 {
-	float desiredSep = 1.0f;
+	float desiredSep = 50.0f;
 	PVector steer{ 0,0 };
 	int count = 0;
 	// check each boid in ssystem, check if its close
@@ -152,7 +154,7 @@ PVector Boid::Seperation(std::vector<Boid> &boids)
 
 PVector Boid::Align(std::vector<Boid> &boids)
 {
-	float neighborDist = 5;
+	float neighborDist = 10.f;
 	PVector sum = PVector{ 0, 0 };
 	int count = 0;
 	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
@@ -184,7 +186,7 @@ PVector Boid::Align(std::vector<Boid> &boids)
 
 PVector Boid::Cohesion(std::vector<Boid> &boids)
 {
-	float neighborDist = 5;
+	float neighborDist = 100.f;
 	PVector sum = PVector{ 0, 0 };
 	int count = 0;
 	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)

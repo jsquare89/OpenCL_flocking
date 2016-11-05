@@ -102,7 +102,7 @@ void Flocking::processInput()
 
 void Flocking::SetupFlock()
 {
-	_flockNums = 1;
+	_flockNums = 10;
 	for (int i = 0; i < _flockNums; i++)
 	{
 		Boid* boid = new Boid();
