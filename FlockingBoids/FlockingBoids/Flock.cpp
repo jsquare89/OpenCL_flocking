@@ -7,6 +7,8 @@ Flock::Flock()
 {
 	_boidLeader.Setup(900, 500);
 	//_boidLeader.ApplyForce(PVector{ 1,0 });
+
+	
 }
 
 

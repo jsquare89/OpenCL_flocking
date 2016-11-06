@@ -13,6 +13,35 @@ _time(0.0f),
 _window(nullptr),
 _gameState(GameState::PLAY)
 {
+	// OpenCL setup
+	cl_int ret;
+	cl_platform_id platform;
+	ret = clGetPlatformIDs(1, &platform, NULL);
+	//checkResult(ret);
+	
+	// Get all the CPU and GPU devices
+	ret = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU | CL_DEVICE_TYPE_CPU, 4, &this.device[0], &this->noOfDevices);
+
+	// Create a context and command queue on the device
+	context = clCreateContext(NULL, noOfDevices, &device[0], NULL, NULL, &ret);
+
+	//print the device types
+
+	//check the current load distribution
+	int sum = 0;
+	for (int i = 0; i < noOfDevices; i++)
+	{
+		sum += load[i];
+	}
+
+	if (sum = 0)
+	{
+		for (int i = 0; i < noOfDevices; i++)
+		{
+			load[i] = F / noOfDevices;
+		}
+	}
+
 
 }
 

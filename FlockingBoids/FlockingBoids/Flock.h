@@ -12,7 +12,7 @@ public:
 	void Run();
 	void AddBoids(Boid b);
 	void Render();
-	
+
 private:
 	Boid _boidLeader;
 	std::vector<Boid> _boids;
