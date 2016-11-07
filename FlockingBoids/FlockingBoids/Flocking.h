@@ -31,6 +31,8 @@ public:
 	cl_device_id *devices;
 	cl_uint numOfDevices;
 	cl_mem buffers[3];
+	cl_mem input_buffers;
+	cl_mem output_buffer;
 
 private:
 	void initSystems();

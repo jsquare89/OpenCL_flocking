@@ -8,9 +8,11 @@
 #include "Vertex.h"
 #include <vector>
 
-class Boid
-{
-public:
+struct Boid {
+	PVector _position;
+	PVector _velocity;
+	PVector _acceleration;
+
 	Boid();
 	~Boid();
 
@@ -27,11 +29,7 @@ public:
 	PVector Seperation(std::vector<Boid> &boids);
 	PVector Align(std::vector<Boid> &boids);
 	PVector Cohesion(std::vector<Boid> &boids);
-private:
 
-	PVector _position;
-	PVector _velocity;
-	PVector _acceleration;
 	float _r;
 	float _maxForce;
 	float _maxSpeed;
