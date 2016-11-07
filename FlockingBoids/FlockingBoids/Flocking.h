@@ -2,13 +2,14 @@
 
 #include <SDL/SDL.h>
 #include <GL/glew.h>
+#include <CL/cl.h>
 
 
 #include "GLSLProgram.h"
 #include "Flock.h"
 
-#define F[8]
-#define MAX_NUM_DEV[4]
+#define F (8)
+#define MAX_NUM_DEV (4)
 
 enum class GameState { PLAY, EXIT };
 
@@ -26,11 +27,10 @@ public:
 	cl_program program;
 	cl_kernel kernel;
 	cl_context context;
-	cl_command_queue command_queue[4];
-	cl_device_id device[4];
-	int load[4];
-	cl_uint noOfDevices;
-	cl_mem buffer;
+	cl_command_queue *command_queues;
+	cl_device_id *devices;
+	cl_uint numOfDevices;
+	cl_mem buffers[3];
 
 private:
 	void initSystems();

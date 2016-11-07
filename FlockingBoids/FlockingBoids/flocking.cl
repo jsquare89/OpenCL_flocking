@@ -1,8 +1,4 @@
-_kernel void Flocking(_global float4* vPosition, )
-
-_constrant struct Params* pp)
-{
-	//get_global_id(0) access the current element index
-	unsigned int i = get_global_id(0);
-
+__kernel void hello_kernel(__global const float *a, __global const float *b, __global float *result) {
+	int gid = get_global_id(0);
+	result[gid] = a[gid] + b[gid];
 }
