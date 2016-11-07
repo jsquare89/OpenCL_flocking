@@ -14,6 +14,24 @@
 #define KERNEL_FUNCTION ("hello_kernel")
 
 
+//class CTiming {
+//public:
+//	CTiming() {}
+//	~CTiming() {}
+//
+//	void start() { gettimeofday(&tvBegin, NULL); }
+//	void end() { gettimeofday(&tvEnd, NULL); }
+//	bool diff(int &seconds, int &useconds) {
+//		long int diff = (tvEnd.tv_usec + 1000000 * tvEnd.tv_sec) -
+//			(tvBegin.tv_usec + 1000000 * tvBegin.tv_sec);
+//		seconds = diff / 1000000;
+//		useconds = diff % 1000000;
+//		return (diff < 0) ? true : false;
+//	}
+//private:
+//	struct timeval, tvBegin, tvEnd, tvDiff;
+//};
+
 bool CheckOpenCLError(cl_int errNum, const char *errMsg)
 {
 	if (errNum != CL_SUCCESS)
@@ -200,10 +218,13 @@ cl_kernel createOpenCLKernel(cl_program program, const char* kernelFunction) {
 	}
 }
 
-bool runOpenCLKernel(cl_context context, cl_kernel kernel) {
+// for testing
+bool runOpenCLHelloWorld(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel) {
 	cl_int errNum;
 	cl_mem buffers[3];
 	// testing code
+	CTimer timer;
+	int seconds, usecound;
 	int array_size = 10;
 	float *result = new float[array_size];
 	float *a = new float[array_size];
@@ -213,11 +234,10 @@ bool runOpenCLKernel(cl_context context, cl_kernel kernel) {
 		b[i] = (float)(i * 2);
 	}
 
-	// create memory objects for kernel arguments
-	//buffers[0] = clCreateBuffer(context, CL_MEM_READ_ONLY, FLOCK_SIZE * sizeof(cl_uint)
 	buffers[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, array_size * sizeof(float), a, NULL);
 	buffers[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, array_size * sizeof(float), b, NULL);
 	buffers[2] = clCreateBuffer(context, CL_MEM_READ_WRITE, array_size * sizeof(float), NULL, NULL);
+
 
 	if (buffers[0] == NULL || buffers[1] == NULL || buffers[2] == NULL) {
 		std::cerr << "ERROR creating buffers" << std::endl;
@@ -233,11 +253,7 @@ bool runOpenCLKernel(cl_context context, cl_kernel kernel) {
 	errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffers[0]) ||
 		clSetKernelArg(kernel, 1, sizeof(cl_mem), &buffers[1]) ||
 		clSetKernelArg(kernel, 2, sizeof(cl_mem), &buffers[2]);
-	//clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&input_buffer);
-	//clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&output_buffer);
 
-	//cl_int flockSize = FLOCK_SIZE;
-	//errNum = clSetKernelArg(kernel, 2, sizeof(flockSize), (void *)&flockSize);
 	if (!CheckOpenCLError(errNum, "ERROR setting kernel arguments")) {
 
 		delete[] b;
@@ -246,6 +262,56 @@ bool runOpenCLKernel(cl_context context, cl_kernel kernel) {
 
 		return false;
 	}
+
+	size_t globalWorkSize[1] = { (size_t)array_size };
+	size_t localWorkSize[1] = { 1 };
+
+	for (int i = 0; i < numOfDevices; ++i) {
+		errNum = clEnqueueNDRangeKernel(commandQueues[i], kernel, 1, NULL, globalWorkSize, localWorkSize, 0, NULL, NULL);
+		if (!CheckOpenCLError(errNum, "ERROR queueing kernel for execution.")) {
+
+			delete[] b;
+			delete[] a;
+			delete[] result;
+
+			return false;
+		} 
+
+		errNum = clEnqueueReadBuffer(commandQueues[i], buffers[2], CL_TRUE, 0, array_size * sizeof(float), result, 0, NULL, NULL);
+		if (!CheckOpenCLError(errNum, "ERROR reading result buffer.")) {
+
+			delete[] b;
+			delete[] a;
+			delete[] result;
+
+			return false;
+		}
+
+	}
+
+	for (int i = 0; i < array_size; i++) {
+		std::cout << result[i] << " ";
+	}
+	std::cout << std::endl << std::endl;
+	std::cout << "Executed program successfully." << std::endl;
+
+	delete[] b;
+	delete[] a;
+	delete[] result;
+	return true;
+}
+
+bool runOpenCLKernel(cl_context context, cl_kernel kernel) {
+
+	// create memory objects for kernel arguments
+	//buffers[0] = clCreateBuffer(context, CL_MEM_READ_ONLY, FLOCK_SIZE * sizeof(cl_uint)
+
+
+	//clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&input_buffer);
+	//clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&output_buffer);
+
+	//cl_int flockSize = FLOCK_SIZE;
+	//errNum = clSetKernelArg(kernel, 2, sizeof(flockSize), (void *)&flockSize);
 
 
 	size_t globalWorkSize[1] = { (size_t)FLOCK_SIZE };
