@@ -4,74 +4,31 @@
 
 Boid::Boid()
 {
-	Setup(640, 360);
+	Boid(0, 0);
 }
 
-void Boid::Setup(float x, float y)
+Boid::Boid(float x, float y)
 {
-	_acceleration = PVector{ 0,0 };
+	acceleration = PVector{ 0,0 };
 	float angle = (float)(rand() % 360 + 1)*(M_PI / 180);
-	_velocity = PVector{ (float)cos(angle),(float)sin(angle) };
-	_position = PVector{ x, y };
-	_r = 1;
-	_maxSpeed = 1.0;
-	_maxForce = 0.9;
-	_width = 1;
-	_height = 1;
-
-	_vboID = 0;
-	if (_vboID == 0)
-	{
-		glGenBuffers(1, &_vboID);
-	}
-
-	
-
-	// Create boid triagle
-	_vertexData[0].position.x = x;
-	_vertexData[0].position.y = y +0.03;
-
-	_vertexData[1].position.x = x +0.015;
-	_vertexData[1].position.y = y -0.03;
-
-	_vertexData[2].position.x = x -0.015;
-	_vertexData[2].position.y = y -0.03;
-
-	// Color vertices
-	for (int i = 0; i < 3; i++)
-	{
-		_vertexData[i].color.r = 255;
-		_vertexData[i].color.g = 0;
-		_vertexData[i].color.b = 255;
-		_vertexData[i].color.a = 255;
-	}
-
-	// to do! rotate boid in the direction of the velocity. or change the boids into circles.
-
-
+	velocity = PVector{ (float)cos(angle),(float)sin(angle) };
+	position = PVector{ x, y };
+	maxSpeed = 1.0;
+	maxForce = 0.9;
 }
 
-Boid::~Boid()
-{
-	if (_vboID != 0)
-	{
-		glDeleteBuffers(1, &_vboID);
-	}
-}
-
-void Boid::Run(std::vector<Boid> &boids, Boid &leader)
+void Boid::Run(std::vector<Boid> boids, Boid leader)
 {
 	Flock(boids, leader);
 	Update();
-	Borders();
 }
 
-void Boid::Flock(std::vector<Boid> &boids, Boid &leader)
+void Boid::Flock(std::vector<Boid> boids, Boid leader)
 {
 	// get new acceleration based on 3 rules
 	//PVector sep = Seperation(boids);
 	
-	PVector seek = Seek(leader._position);
+	PVector seek = Seek(leader.position);
 	//sep.mult(5);
 	//ApplyForce(sep);
 	ApplyForce(seek);
@@ -79,41 +36,30 @@ void Boid::Flock(std::vector<Boid> &boids, Boid &leader)
 
 void Boid::Update()
 {
-	_velocity.add(_acceleration);
-	_velocity.limit(_maxSpeed);
-	
-	PVector newVelocity = PVector{ _velocity.x / (1240 / 2), _velocity.y / (720 / 2) };
-	_position.add(_velocity);
-	_acceleration.mult(0); // Reset acceleration
-}
-
-void Boid::Borders()
-{
-	if (_position.x < 0) _position.x = 1280;
-	else if (_position.y < 0) _position.y = 720;
-	else if (_position.x > 1280) _position.x = 0;
-	else if (_position.y > 720) _position.y = 0;
+	velocity.add(acceleration);
+	velocity.limit(maxSpeed);
+	position.add(velocity);
+	acceleration.mult(0); // Reset acceleration
 }
 
 void Boid::ApplyForce(PVector force)
 {
-	_acceleration.add(force);
+	acceleration.add(force);
 }
 
 void Boid::Wander()
 {
 	Update();
-	Borders();
 }
 
 PVector Boid::Seek(PVector target)
 {
-	PVector desired = PVector().sub(target, _position);
+	PVector desired = PVector().sub(target, position);
 	desired.normalize();
-	desired.mult(_maxSpeed);
+	desired.mult(maxSpeed);
 
-	PVector steer = PVector().sub(desired, _velocity);
-	steer.limit(_maxForce);
+	PVector steer = PVector().sub(desired, velocity);
+	steer.limit(maxForce);
 	return steer;	
 }
 
@@ -126,11 +72,11 @@ PVector Boid::Seperation(std::vector<Boid> &boids)
 	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
 	{
 		// get distance of neighbor
-		float d = PVector().dist(_position, neighborItr->_position);
+		float d = PVector().dist(position, neighborItr->position);
 		if ((d > 0) && (d < desiredSep))
 		{
 			// Calculate vector point away from neighbor
-			PVector diff = PVector().sub(_position, neighborItr->_position);
+			PVector diff = PVector().sub(position, neighborItr->position);
 			diff.normalize();
 			diff.div(d); // weight by diff
 			steer.add(diff);
@@ -145,9 +91,9 @@ PVector Boid::Seperation(std::vector<Boid> &boids)
 		if (steer.mag() > 0)
 		{
 			steer.normalize();
-			steer.mult(_maxSpeed);
-			steer.sub(_velocity);
-			steer.limit(_maxForce);
+			steer.mult(maxSpeed);
+			steer.sub(velocity);
+			steer.limit(maxForce);
 		}
 		return steer;
 	}
@@ -160,10 +106,10 @@ PVector Boid::Align(std::vector<Boid> &boids)
 	int count = 0;
 	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
 	{
-		float d = PVector().dist(_position, neighborItr->_position);
+		float d = PVector().dist(position, neighborItr->position);
 		if ((d > 0) && (d < neighborDist)) 
 		{
-			sum.add(neighborItr->_velocity);
+			sum.add(neighborItr->velocity);
 			count++;
 		}
 	}
@@ -175,9 +121,9 @@ PVector Boid::Align(std::vector<Boid> &boids)
 
 		// Implement Reynolds: Steering = Desired - Velocity
 		sum.normalize();
-		sum.mult(_maxSpeed);
-		PVector steer = PVector().sub(sum, _velocity);
-		steer.limit(_maxForce);
+		sum.mult(maxSpeed);
+		PVector steer = PVector().sub(sum, velocity);
+		steer.limit(maxForce);
 		return steer;
 	}
 	else {
@@ -192,10 +138,10 @@ PVector Boid::Cohesion(std::vector<Boid> &boids)
 	int count = 0;
 	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
 	{
-		float d = PVector().dist(_position, neighborItr->_position);
+		float d = PVector().dist(position, neighborItr->position);
 		if ((d > 0) && (d < neighborDist))
 		{
-			sum.add(neighborItr->_position);
+			sum.add(neighborItr->position);
 			count++;
 		}
 	}
@@ -208,41 +154,4 @@ PVector Boid::Cohesion(std::vector<Boid> &boids)
 	{
 		return PVector{ 0,0 };
 	}
-}
-
-void Boid::Render()
-{
-
-	_vertexData[0].position.x = _position.x / (1280/2) - 1;
-	_vertexData[0].position.y = _position.y / (720/2) - 1 + 0.03;
-
-	_vertexData[1].position.x = _position.x / (1280 / 2) - 1 + 0.015;
-	_vertexData[1].position.y = _position.y / (720 / 2) - 1 - 0.03;
-
-	_vertexData[2].position.x = _position.x / (1280 / 2) - 1 - 0.015;
-	_vertexData[2].position.y = _position.y / (720 / 2) - 1 - 0.03;
-
-	glBindBuffer(GL_ARRAY_BUFFER, _vboID);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(_vertexData), _vertexData, GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-	// bind the buffer object
-	glBindBuffer(GL_ARRAY_BUFFER, _vboID);
-
-	// Tell opengl that we want to use the first
-	// attribute array. We only need one array right
-	// now since we are only using positon.
-	glEnableVertexAttribArray(0);
-
-	// This is the position attribute pointer
-	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex,position));
-	// This is the color attribute pointer
-	glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex), (void*)offsetof(Vertex, color));
-
-	glDrawArrays(GL_TRIANGLES, 0, 3);
-
-	glDisableVertexAttribArray(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }

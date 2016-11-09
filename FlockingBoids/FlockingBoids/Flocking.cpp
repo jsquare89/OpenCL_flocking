@@ -8,29 +8,10 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <ctime>
 
-#define FLOCK_SIZE (300)
 #define KERNEL_FILE ("./flocking.cl")
-#define KERNEL_FUNCTION ("hello_kernel")
-
-
-//class CTiming {
-//public:
-//	CTiming() {}
-//	~CTiming() {}
-//
-//	void start() { gettimeofday(&tvBegin, NULL); }
-//	void end() { gettimeofday(&tvEnd, NULL); }
-//	bool diff(int &seconds, int &useconds) {
-//		long int diff = (tvEnd.tv_usec + 1000000 * tvEnd.tv_sec) -
-//			(tvBegin.tv_usec + 1000000 * tvBegin.tv_sec);
-//		seconds = diff / 1000000;
-//		useconds = diff % 1000000;
-//		return (diff < 0) ? true : false;
-//	}
-//private:
-//	struct timeval, tvBegin, tvEnd, tvDiff;
-//};
+#define KERNEL_FUNCTION ("update")
 
 bool CheckOpenCLError(cl_int errNum, const char *errMsg)
 {
@@ -60,7 +41,7 @@ void cleanupOpenCLModels(cl_context context, cl_uint numOfDevices, cl_command_qu
 
 }
 
-cl_context createOpenlCLContext() {
+cl_context createOpenCLContext() {
 	cl_int errNum;
 	cl_platform_id platform;
 	cl_uint numPlatforms;
@@ -211,21 +192,25 @@ cl_program createOpenCLProgram(cl_context context, cl_uint numOfDevices, cl_devi
 
 cl_kernel createOpenCLKernel(cl_program program, const char* kernelFunction) {
 	cl_int errNum;
-
-	clCreateKernel(program, kernelFunction, &errNum);
+	cl_kernel kernel = clCreateKernel(program, kernelFunction, &errNum);
 	if (!CheckOpenCLError(errNum, "ERROR creating kernel!")) {
 		return NULL;
 	}
+
+	return kernel;
 }
 
 // for testing
 bool runOpenCLHelloWorld(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel) {
 	cl_int errNum;
-	cl_mem buffers[3];
-	// testing code
-	CTimer timer;
+	cl_mem buffers[3]; 
+	// timer setup
+	std::clock_t start;
+	double duration;
+	start = std::clock();
+
 	int seconds, usecound;
-	int array_size = 10;
+	int array_size = 999999;
 	float *result = new float[array_size];
 	float *a = new float[array_size];
 	float *b = new float[array_size];
@@ -250,9 +235,9 @@ bool runOpenCLHelloWorld(cl_context context, cl_uint numOfDevices, cl_command_qu
 	}
 
 
-	errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffers[0]) ||
-		clSetKernelArg(kernel, 1, sizeof(cl_mem), &buffers[1]) ||
-		clSetKernelArg(kernel, 2, sizeof(cl_mem), &buffers[2]);
+	errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &buffers[0]);
+	errNum = clSetKernelArg(kernel, 1, sizeof(cl_mem), &buffers[1]);
+	errNum = clSetKernelArg(kernel, 2, sizeof(cl_mem), &buffers[2]);
 
 	if (!CheckOpenCLError(errNum, "ERROR setting kernel arguments")) {
 
@@ -289,9 +274,12 @@ bool runOpenCLHelloWorld(cl_context context, cl_uint numOfDevices, cl_command_qu
 
 	}
 
-	for (int i = 0; i < array_size; i++) {
+	duration = (std::clock() - start) / (double) CLOCKS_PER_SEC;
+	std::cout << "OpenCL ran in " << duration << " seconds" << std::endl << std::endl;
+
+	/*for (int i = 0; i < array_size; i++) {
 		std::cout << result[i] << " ";
-	}
+	}*/
 	std::cout << std::endl << std::endl;
 	std::cout << "Executed program successfully." << std::endl;
 
@@ -301,41 +289,79 @@ bool runOpenCLHelloWorld(cl_context context, cl_uint numOfDevices, cl_command_qu
 	return true;
 }
 
-bool runOpenCLKernel(cl_context context, cl_kernel kernel) {
+bool Flocking::runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel) {
 
-	// create memory objects for kernel arguments
-	//buffers[0] = clCreateBuffer(context, CL_MEM_READ_ONLY, FLOCK_SIZE * sizeof(cl_uint)
+	cl_int errNum;
+	int numWrEv = 0;
+	cl_event wrEv[1];
+	int numRdEv = 0;
+	cl_event rdEv[MAX_NUM_DEV];
+	cl_event enqEv[MAX_NUM_DEV];
+	// timer setup
+	std::clock_t start;
+	double duration;
+	start = std::clock();
+
+	std::vector<Boid> result;
+
+	input_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, numBoids * sizeof(Boid), &_boids[0], NULL);
+	output_buffer= clCreateBuffer(context, CL_MEM_READ_WRITE, numBoids * sizeof(Boid), NULL, NULL);
+	errNum = clEnqueueWriteBuffer(commandQueues[0], input_buffer, CL_FALSE, 0, numBoids * sizeof(Boid), &_boids[0], 0, NULL, &wrEv[numWrEv++]);
+	if (!CheckOpenCLError(errNum, "ERROR writing input buffer.")) {
+		return false;
+	}
+
+	if (input_buffer == NULL || output_buffer == NULL) {
+		std::cerr << "ERROR creating buffers" << std::endl;
+		return false;
+	}
 
 
-	//clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&input_buffer);
-	//clSetKernelArg(kernel, 0, sizeof(cl_mem), (void *)&output_buffer);
+	errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input_buffer)
+		|| clSetKernelArg(kernel, 1, sizeof(cl_mem), &output_buffer)
+		|| clSetKernelArg(kernel, 2, sizeof(int), &numBoids);
 
-	//cl_int flockSize = FLOCK_SIZE;
-	//errNum = clSetKernelArg(kernel, 2, sizeof(flockSize), (void *)&flockSize);
+	if (!CheckOpenCLError(errNum, "ERROR setting kernel arguments")) {
+		return false;
+	}
 
-
-	size_t globalWorkSize[1] = { (size_t)FLOCK_SIZE };
+	size_t globalWorkSize[1] = { (size_t)numBoids };
 	size_t localWorkSize[1] = { 1 };
 
+	for (int i = 0; i < numOfDevices; ++i) {
+		errNum = clEnqueueNDRangeKernel(commandQueues[i], kernel, 1, NULL, globalWorkSize, NULL, numWrEv, wrEv, &enqEv[i]);
+		if (!CheckOpenCLError(errNum, "ERROR queueing kernel for execution.")) {
+			return false;
+		}
 
+		errNum = clEnqueueReadBuffer(commandQueues[i], output_buffer, CL_TRUE, 0, numBoids * sizeof(Boid), &_boids[0], 1, &enqEv[i], &rdEv[numRdEv++]);
+		if (!CheckOpenCLError(errNum, "ERROR reading result buffer.")) {
+			return false;
+		}
 
-	// copy input data
-	//errNum = clEnqueueWriteBuffer(
-	//	command_queues[0], input_buffer, CL_FALSE, 0,
-	//	sizeof(cl_uint)*FLOCK_SIZE, x, 0, NULL, &wrEv[numWrEv++]);
+	}
 
-	//// launch the kernel
-	//for (int i = 0; i < numOfDevices; ++i) {
-	//	errNum = clEnqueueNDRangeKernel(
-	//		command_queues[i], 
-	//		kernel, 
-	//		sizeof(globalWorkSize) / sizeof(size_t), 
-	//		globalWorkSize, 
-	//		NULL, 
-	//		0, 
-	//		NULL, 
-	//		NULL);
-	//}
+	duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+	std::cout << "OpenCL ran in " << duration << " seconds" << std::endl << std::endl;
+
+	/*for (int i = 0; i < array_size; i++) {
+	std::cout << result[i] << " ";
+	}*/
+	std::cout << std::endl << std::endl;
+	std::cout << "Executed program successfully." << std::endl;
+
+	return true;
+
+}
+
+Flocking* _instance = 0;
+Flocking* Flocking::getInstance()
+{
+	if (!_instance) {
+		_instance = new Flocking;
+	}
+	
+	return _instance;
 }
 
 Flocking::Flocking() : _screenWidth(1280),
@@ -345,53 +371,16 @@ Flocking::Flocking() : _screenWidth(1280),
 	_gameState(GameState::PLAY)
 {
 
-	// Create a context and command queue on the device
-	context = createOpenlCLContext();
-	if (!context) {
-		return;
-	}
+	initSystems();
 
-	numOfDevices = countOpenlCLDevices(context);
+	initShaders();
 
-	// Get all the CPU and GPU devices
-	devices = retrieveOpenCLDevices(context, numOfDevices);
-	if (!devices) {
-		cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
-	}
+	initOpenCL();
 
-	// Get device information for each device and assign command queues
-	command_queues = (cl_command_queue *)malloc(numOfDevices * sizeof(cl_command_queue));
+	setupFlock();
 
-	std::cout << std::endl << "Devices:" << std::endl;
-	for (int i = 0; i < numOfDevices; i++) {
-		
-		if (!printOpenCLDeviceInfo(devices[i])) {
-			free(devices);
-			cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
-		}
-
-		// create command queue for each device
-		command_queues[i] = createOpenCLCommandQueue(context, devices[i]);
-		if (!command_queues[i]) {
-			free(devices);
-			cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
-			return;
-		}
-
-	}
-	std::cout << std::endl;
-
-
-	// create program
-	program = createOpenCLProgram(context, numOfDevices, devices, KERNEL_FILE);
-	if (!program) {
-		cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
-		return;
-	}
-
-	// create kernel
-	kernel = createOpenCLKernel(program, "./flocking.cl");
-
+	gameLoop();
+	
 }
 
 
@@ -399,16 +388,6 @@ Flocking::~Flocking()
 {
 }
 
-
-void Flocking::run()
-{
-	initSystems();
-	
-	_pflock = new Flock();
-	SetupFlock();
-
-	gameLoop();
-}
 
 void Flocking::initSystems()
 {
@@ -438,7 +417,6 @@ void Flocking::initSystems()
 
 	glClearColor(0.8f, 0.8f, 1.0f, 1.0f);
 
-	initShaders();
 }
 
 void Flocking::initShaders()
@@ -447,7 +425,60 @@ void Flocking::initShaders()
 	_colorProgram.addAttribute("vertexPosition");
 	_colorProgram.addAttribute("vertexColor");
 	_colorProgram.linkShaders();
+}
 
+void Flocking::initOpenCL()
+{
+	// Create a context and command queue on the device
+	context = createOpenCLContext();
+	if (!context) {
+		return;
+	}
+
+	numOfDevices = countOpenlCLDevices(context);
+
+	// Get all the CPU and GPU devices
+	devices = retrieveOpenCLDevices(context, numOfDevices);
+	if (!devices) {
+		cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+	}
+
+	// Get device information for each device and assign command queues
+	command_queues = (cl_command_queue *)malloc(numOfDevices * sizeof(cl_command_queue));
+
+	std::cout << std::endl << "Devices:" << std::endl;
+	for (int i = 0; i < numOfDevices; i++) {
+
+		if (!printOpenCLDeviceInfo(devices[i])) {
+			free(devices);
+			cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+		}
+
+		// create command queue for each device
+		command_queues[i] = createOpenCLCommandQueue(context, devices[i]);
+		if (!command_queues[i]) {
+			free(devices);
+			cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+			return;
+		}
+
+	}
+	std::cout << std::endl;
+
+
+	// create program
+	program = createOpenCLProgram(context, numOfDevices, devices, KERNEL_FILE);
+	if (!program) {
+		cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+		return;
+	}
+
+	// create kernel
+	kernel = createOpenCLKernel(program, KERNEL_FUNCTION);
+	if (!kernel) {
+		cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+		return;
+	}
 }
 
 void Flocking::gameLoop()
@@ -455,11 +486,13 @@ void Flocking::gameLoop()
 	while (_gameState != GameState::EXIT)
 	{
 		processInput();
-		_time += 0.01;
-		_pflock->Run();
-		Render();
+		
+		update();
+
+		render();
 	}
 }
+
 void Flocking::processInput()
 {
 	SDL_Event evnt;
@@ -478,16 +511,46 @@ void Flocking::processInput()
 	}
 }
 
-void Flocking::SetupFlock()
+void Flocking::setupFlock()
 {
-	for (int i = 0; i < FLOCK_SIZE; i++)
+	_boidLeader = Boid(_screenWidth / 2, _screenHeight / 2);
+	for (int i = 0; i < numBoids; i++)
 	{
-		Boid* boid = new Boid();
-		_pflock->AddBoids(*boid);
+		_boids.push_back(Boid(_screenWidth / 2 + rand() % 100 - 50, _screenHeight / 2 + rand() % 100 - 50));
 	}
 }
 
-void Flocking::Render()
+void Flocking::update()
+{
+	_time += 0.01;
+
+	_boidLeader.Wander();
+	_boidLeader = wrapBorder(_boidLeader);
+	/*for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
+	{
+		(*it).Flock(_boids, _boidLeader);
+		(*it).Update();
+		(*it) = wrapBorder(*it);
+	}*/
+
+	runOpenCLKernel(context, numOfDevices, command_queues, kernel);
+}
+
+Boid Flocking::wrapBorder(Boid boid)
+{
+	if (boid.position.x < 0) 
+		boid.position.x += _screenWidth;
+	else if (boid.position.y < 0) 
+		boid.position.y += _screenHeight;
+	else if (boid.position.x > _screenWidth) 
+		boid.position.x -= _screenWidth;
+	else if (boid.position.y > _screenHeight) 
+		boid.position.y -= _screenHeight;
+
+	return boid;
+}
+
+void Flocking::render()
 {
 	// Set the base depth to 1.0
 	glClearDepth(1.0);
@@ -499,7 +562,14 @@ void Flocking::Render()
 	GLuint timeLocation = _colorProgram.getUniformLocation("time");
 	glUniform1f(timeLocation, _time);
 
-	_pflock->Render();
+	// for each boid in list of boids render
+	renderBoid(_boidLeader);
+	
+	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
+	{
+		renderBoid(*it);
+	}
+
 
 	_colorProgram.unuse();
 
@@ -507,4 +577,36 @@ void Flocking::Render()
 
 	// Swap buffer and draw everything to the screen.
 	SDL_GL_SwapWindow(_window);
+}
+
+void Flocking::renderBoid(Boid boid)
+{
+	Vertex vertexData[3];
+	vertexData[0].position.x = boid.position.x / (1280 / 2) - 1;
+	vertexData[0].position.y = boid.position.y / (720 / 2) - 1 + 0.03;
+
+	vertexData[1].position.x = boid.position.x / (1280 / 2) - 1 + 0.015;
+	vertexData[1].position.y = boid.position.y / (720 / 2) - 1 - 0.03;
+
+	vertexData[2].position.x = boid.position.x / (1280 / 2) - 1 - 0.015;
+	vertexData[2].position.y = boid.position.y / (720 / 2) - 1 - 0.03;
+
+	glGenBuffers(1, &_boidVbo);
+
+	glBindBuffer(GL_ARRAY_BUFFER, _boidVbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
+
+	// Tell opengl that we want to use the first
+	// attribute array. We only need one array right
+	// now since we are only using positon.
+	glEnableVertexAttribArray(0);
+
+	// This is the position attribute pointer
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+	// This is the color attribute pointer
+	glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex), (void*)offsetof(Vertex, color));
+
+	glDrawArrays(GL_TRIANGLES, 0, 3);
+
+	glDisableVertexAttribArray(0);
 }

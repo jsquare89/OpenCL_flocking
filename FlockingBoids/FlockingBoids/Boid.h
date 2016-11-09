@@ -9,19 +9,15 @@
 #include <vector>
 
 struct Boid {
-	PVector _position;
-	PVector _velocity;
-	PVector _acceleration;
+	PVector position;
+	PVector velocity;
+	PVector acceleration;
 
 	Boid();
-	~Boid();
-
-	void Setup(float x, float y);
-	void Render();
-	void Run(std::vector<Boid> &boids, Boid &leader);
-	void Flock(std::vector<Boid> &boids, Boid &leader);
+	Boid(float x, float y);
+	void Run(std::vector<Boid> boids, Boid leader);
+	void Flock(std::vector<Boid> boids, Boid leader);
 	void Update();
-	void Borders();
 	void ApplyForce(PVector force);
 
 	void Wander();
@@ -30,12 +26,7 @@ struct Boid {
 	PVector Align(std::vector<Boid> &boids);
 	PVector Cohesion(std::vector<Boid> &boids);
 
-	float _r;
-	float _maxForce;
-	float _maxSpeed;
-	GLuint _vboID;
-	Vertex _vertexData[3];
-	float _width;
-	float _height;
+	float maxForce;
+	float maxSpeed;
 };
 

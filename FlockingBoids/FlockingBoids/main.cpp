@@ -6,8 +6,6 @@
 
 int main(int argc, char** argv) {
 
-	Flocking flock;
-	flock.run();
-
+	Flocking::getInstance();
 	return 0;
 }
