@@ -101,7 +101,7 @@ PVector Boid::Seperation(std::vector<Boid> &boids)
 
 PVector Boid::Align(std::vector<Boid> &boids)
 {
-	float neighborDist = 5;
+	float neighborDist = 10.f;
 	PVector sum = PVector{ 0, 0 };
 	int count = 0;
 	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
@@ -133,7 +133,7 @@ PVector Boid::Align(std::vector<Boid> &boids)
 
 PVector Boid::Cohesion(std::vector<Boid> &boids)
 {
-	float neighborDist = 5;
+	float neighborDist = 100.f;
 	PVector sum = PVector{ 0, 0 };
 	int count = 0;
 	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
