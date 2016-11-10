@@ -8,36 +8,33 @@
 #include "Vertex.h"
 #include <vector>
 
-class Boid
-{
-public:
-	Boid();
-	~Boid();
+struct Boid {
+	PVector position;
+	PVector velocity;
+	PVector acceleration;
+	float orientation;
+	float wanderOrientation;
 
-	void Setup(float x, float y);
-	void Render();
-	void Run(std::vector<Boid> &boids, Boid &leader);
-	void Flock(std::vector<Boid> &boids, Boid &leader);
+	Boid();
+	Boid(float x, float y);
+	void Run(std::vector<Boid> boids, Boid leader);
+	void Flock(std::vector<Boid> boids, Boid leader);
 	void Update();
-	void Borders();
 	void ApplyForce(PVector force);
 
 	void Wander();
+	PVector Wanderer();
+	PVector Face(PVector target);
 	PVector Seek(PVector target);
-	PVector Seperation(std::vector<Boid> &boids);
+	PVector Arrive(PVector target);
+	PVector Separation(std::vector<Boid> &boids);
 	PVector Align(std::vector<Boid> &boids);
 	PVector Cohesion(std::vector<Boid> &boids);
-private:
 
-	PVector _position;
-	PVector _velocity;
-	PVector _acceleration;
-	float _r;
-	float _maxForce;
-	float _maxSpeed;
-	GLuint _vboID;
-	Vertex _vertexData[3];
-	float _width;
-	float _height;
+
+
+	float maxForce;
+	float maxSpeed;
 };
 
+float randomBinomial();
