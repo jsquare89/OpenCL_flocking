@@ -19,20 +19,20 @@ Boid::Boid(float x, float y)
 
 void Boid::Run(std::vector<Boid> boids, Boid leader)
 {
-	Flock(boids, leader);
+	//Flock(boids, leader);
 	Update();
 }
 
-void Boid::Flock(std::vector<Boid> boids, Boid leader)
-{
-	// get new acceleration based on 3 rules
-	//PVector sep = Seperation(boids);
-	
-	PVector seek = Seek(leader.position);
-	//sep.mult(5);
-	//ApplyForce(sep);
-	ApplyForce(seek);
-}
+//void Boid::Flock(std::vector<Boid> boids, Boid leader)
+//{
+//	// get new acceleration based on 3 rules
+//	//PVector sep = Seperation(boids);
+//	
+//	PVector seek = Seek(leader.position);
+//	//sep.mult(5);
+//	//ApplyForce(sep);
+//	ApplyForce(seek);
+//}
 
 void Boid::Update()
 {
@@ -42,116 +42,136 @@ void Boid::Update()
 	acceleration.mult(0); // Reset acceleration
 }
 
-void Boid::ApplyForce(PVector force)
-{
-	acceleration.add(force);
-}
-
-void Boid::Wander()
-{
-	Update();
-}
-
-PVector Boid::Seek(PVector target)
-{
-	PVector desired = PVector().sub(target, position);
-	desired.normalize();
-	desired.mult(maxSpeed);
-
-	PVector steer = PVector().sub(desired, velocity);
-	steer.limit(maxForce);
-	return steer;	
-}
-
-PVector Boid::Seperation(std::vector<Boid> &boids)
-{
-	float desiredSep = 40.0f;
-	PVector steer{ 0,0 };
-	int count = 0;
-	// check each boid in ssystem, check if its close
-	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
-	{
-		// get distance of neighbor
-		float d = PVector().dist(position, neighborItr->position);
-		if ((d > 0) && (d < desiredSep))
-		{
-			// Calculate vector point away from neighbor
-			PVector diff = PVector().sub(position, neighborItr->position);
-			diff.normalize();
-			diff.div(d); // weight by diff
-			steer.add(diff);
-			count++; // Keep track of how many
-		}
-		// Average -- dive by amount
-		if (count > 0)
-		{
-			steer.div((float)count);
-		}
-
-		if (steer.mag() > 0)
-		{
-			steer.normalize();
-			steer.mult(maxSpeed);
-			steer.sub(velocity);
-			steer.limit(maxForce);
-		}
-		return steer;
-	}
-}
-
-PVector Boid::Align(std::vector<Boid> &boids)
-{
-	float neighborDist = 10.f;
-	PVector sum = PVector{ 0, 0 };
-	int count = 0;
-	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
-	{
-		float d = PVector().dist(position, neighborItr->position);
-		if ((d > 0) && (d < neighborDist)) 
-		{
-			sum.add(neighborItr->velocity);
-			count++;
-		}
-	}
-	if (count > 0) {
-		sum.div((float)count);
-		// First two lines of code below could be condensed with new PVector setMag() method
-		// Not using this method until Processing.js catches up
-		// sum.setMag(maxspeed);
-
-		// Implement Reynolds: Steering = Desired - Velocity
-		sum.normalize();
-		sum.mult(maxSpeed);
-		PVector steer = PVector().sub(sum, velocity);
-		steer.limit(maxForce);
-		return steer;
-	}
-	else {
-		return PVector{ 0, 0 };
-	}
-}
-
-PVector Boid::Cohesion(std::vector<Boid> &boids)
-{
-	float neighborDist = 100.f;
-	PVector sum = PVector{ 0, 0 };
-	int count = 0;
-	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
-	{
-		float d = PVector().dist(position, neighborItr->position);
-		if ((d > 0) && (d < neighborDist))
-		{
-			sum.add(neighborItr->position);
-			count++;
-		}
-	}
-	if (count > 0)
-	{
-		sum.div(count);
-		return Seek(sum);
-	}
-	else
-	{
-		return PVector{ 0,0 };
-	}
-}
+//void Boid::ApplyForce(PVector force)
+//{
+//	acceleration.add(force);
+//}
+//
+//void Boid::Wander()
+//{
+//	Update();
+//}
+//
+//PVector Boid::Seek(PVector target)
+//{
+//	PVector desired = PVector().sub(target, position);
+//	desired.normalize();
+//	desired.mult(maxSpeed);
+//
+//	PVector steer = PVector().sub(desired, velocity);
+//	steer.limit(maxForce);
+//	return steer;	
+//}
+//
+//PVector Boid::Seperation(std::vector<Boid> &boids)
+//{
+//	float desiredSep = 40.0f;
+//	PVector steer{ 0,0 };
+//	int count = 0;
+//	// check each boid in ssystem, check if its close
+//	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
+//	{
+//		// get distance of neighbor
+//		float d = PVector().dist(position, neighborItr->position);
+//		if ((d > 0) && (d < desiredSep))
+//		{
+//			// Calculate vector point away from neighbor
+//			PVector diff = PVector().sub(position, neighborItr->position);
+//			diff.normalize();
+//			diff.div(d); // weight by diff
+//			steer.add(diff);
+//			count++; // Keep track of how many
+//		}
+//		// Average -- dive by amount
+//		if (count > 0)
+//		{
+//			steer.div((float)count);
+//		}
+//
+//		if (steer.mag() > 0)
+//		{
+//			steer.normalize();
+//			steer.mult(maxSpeed);
+//			steer.sub(velocity);
+//			steer.limit(maxForce);
+//		}
+//		return steer;
+//	}
+//}
+//
+//PVector Boid::Align(std::vector<Boid> &boids)
+//{
+//	float neighborDist = 10.f;
+//
+//	PVector result = PVector{ 0, 0 };
+//	int neighborCount = 0;
+//	for (std::vector<Boid>::iterator it = boids.begin(); it != boids.end(); ++it)
+//	{
+//		Boid other = (*it);
+//		if (this != &(*it)) {
+//			this->position.sub((*it))
+//			if ( (this->position.sub((*it).position))->mag() < neighborDist )
+//		}
+//		float d = PVector().dist(position, it->position);
+//		if ((d > 0) && (d < neighborDist))
+//		{
+//			sum.add(it->velocity);
+//			count++;
+//		}
+//	}
+//
+//
+//	
+//	PVector sum = PVector{ 0, 0 };
+//	int count = 0;
+//	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
+//	{
+//		float d = PVector().dist(position, neighborItr->position);
+//		if ((d > 0) && (d < neighborDist)) 
+//		{
+//			sum.add(neighborItr->velocity);
+//			count++;
+//		}
+//	}
+//	if (count > 0) {
+//		sum.div((float)count);
+//		// First two lines of code below could be condensed with new PVector setMag() method
+//		// Not using this method until Processing.js catches up
+//		// sum.setMag(maxspeed);
+//
+//		// Implement Reynolds: Steering = Desired - Velocity
+//		sum.normalize();
+//		sum.mult(maxSpeed);
+//		PVector steer = PVector().sub(sum, velocity);
+//		steer.limit(maxForce);
+//		return steer;
+//	}
+//	else {
+//		return PVector{ 0, 0 };
+//	}
+//}
+//
+//PVector Boid::Cohesion(std::vector<Boid> &boids)
+//{
+//	float neighborDist = 100.f;
+//	PVector sum = PVector{ 0, 0 };
+//	int count = 0;
+//	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
+//	{
+//		float d = PVector().dist(position, neighborItr->position);
+//		if ((d > 0) && (d < neighborDist))
+//		{
+//			sum.add(neighborItr->position);
+//			count++;
+//		}
+//	}
+//	if (count > 0)
+//	{
+//		sum.div(count);
+//		return Seek(sum);
+//	}
+//	else
+//	{
+//		return PVector{ 0,0 };
+//	}
+//}

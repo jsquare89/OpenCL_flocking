@@ -5,6 +5,7 @@
 #include <CL/cl.h>
 
 #include <vector>
+#include <ctime>
 
 #include "GLSLProgram.h"
 #include "Boid.h"
@@ -12,7 +13,7 @@
 #define F (8)
 #define MAX_NUM_DEV (4)
 
-#define FLOCK_SIZE (1)
+#define FLOCK_SIZE (500)
 
 enum class GameState { PLAY, EXIT };
 
@@ -24,13 +25,17 @@ public:
 private:
 	Flocking();
 	~Flocking();
+	std::clock_t _currentTime;
 
 	void initSystems();
 	void initShaders();
 	void initOpenCL();
 	void gameLoop();
 	void processInput();
-	void update();
+	void update(float timeSinceLastFrame);
+	PVector alignment(Boid boid);
+	PVector cohesion(Boid boid);
+	PVector separation(Boid boid);
 	void render();
 	void renderBoid(Boid boid);
 
@@ -58,7 +63,7 @@ private:
 	cl_mem buffers[3];
 	cl_mem input_buffer;
 	cl_mem output_buffer;
-	bool runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel);
+	bool runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel, float time);
 
 	Boid _boidLeader;
 	std::vector<Boid> _boids;

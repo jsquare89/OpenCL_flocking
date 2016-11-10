@@ -8,7 +8,6 @@
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <ctime>
 
 #define KERNEL_FILE ("./flocking.cl")
 #define KERNEL_FUNCTION ("update")
@@ -289,7 +288,7 @@ bool runOpenCLHelloWorld(cl_context context, cl_uint numOfDevices, cl_command_qu
 	return true;
 }
 
-bool Flocking::runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel) {
+bool Flocking::runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel, float time) {
 
 	cl_int errNum;
 	int numWrEv = 0;
@@ -319,7 +318,8 @@ bool Flocking::runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_comm
 
 	errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input_buffer)
 		|| clSetKernelArg(kernel, 1, sizeof(cl_mem), &output_buffer)
-		|| clSetKernelArg(kernel, 2, sizeof(int), &numBoids);
+		|| clSetKernelArg(kernel, 2, sizeof(int), &numBoids)
+		|| clSetKernelArg(kernel, 3, sizeof(float), &time);
 
 	if (!CheckOpenCLError(errNum, "ERROR setting kernel arguments")) {
 		return false;
@@ -370,6 +370,10 @@ Flocking::Flocking() : _screenWidth(1280),
 	_window(nullptr),
 	_gameState(GameState::PLAY)
 {
+
+
+	// timer setup
+	_currentTime = std::clock();
 
 	initSystems();
 
@@ -485,9 +489,13 @@ void Flocking::gameLoop()
 {
 	while (_gameState != GameState::EXIT)
 	{
+		std::clock_t newTime = std::clock();
+		float timeSinceLastFrame = (newTime - _currentTime) / (float)CLOCKS_PER_SEC;
+		_currentTime = newTime;
+
 		processInput();
 		
-		update();
+		update(timeSinceLastFrame);
 
 		render();
 	}
@@ -513,27 +521,126 @@ void Flocking::processInput()
 
 void Flocking::setupFlock()
 {
-	_boidLeader = Boid(_screenWidth / 2, _screenHeight / 2);
+	// _boidLeader = Boid(_screenWidth / 2, _screenHeight / 2);
 	for (int i = 0; i < numBoids; i++)
 	{
 		_boids.push_back(Boid(_screenWidth / 2 + rand() % 100 - 50, _screenHeight / 2 + rand() % 100 - 50));
 	}
 }
 
-void Flocking::update()
+void Flocking::update(float timeSinceLastFrame)
 {
-	_time += 0.01;
 
-	_boidLeader.Wander();
-	_boidLeader = wrapBorder(_boidLeader);
-	/*for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
+	runOpenCLKernel(context, numOfDevices, command_queues, kernel, timeSinceLastFrame);
+	// _boidLeader.Wander();
+	// _boidLeader = wrapBorder(_boidLeader);
+	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
 	{
-		(*it).Flock(_boids, _boidLeader);
-		(*it).Update();
-		(*it) = wrapBorder(*it);
-	}*/
+		//Boid boid = (*it);
+		// (*it).position.add((*it).velocity);
 
-	runOpenCLKernel(context, numOfDevices, command_queues, kernel);
+		//(*it).velocity.add(alignment(boid));
+		//(*it).velocity.add(cohesion(boid));
+		//PVector separationValue = separation(boid);
+		//separationValue.mult(2);
+		//(*it).velocity.add(separationValue);
+		//(*it).velocity.normalize();
+		//(*it).velocity.mult(50.0f);
+		//(*it).velocity.mult(timeSinceLastFrame);
+
+		*it = wrapBorder(*it);
+	}
+
+}
+
+PVector Flocking::alignment(Boid boid) {
+	float neighborDist = 50.f;
+
+	PVector result = PVector{ 0, 0 };
+	int neighborCount = 0;
+	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); ++it)
+	{
+		Boid other = (*it);
+		if (&boid != &other) {
+			if (PVector().dist(boid.position, other.position) < neighborDist) {
+				result.add(other.velocity);
+
+				neighborCount++;
+			}
+		}
+	}
+
+	if (neighborCount == 0) {
+		return result;
+	}
+
+	result.div(neighborCount);
+	result.normalize();
+
+	return result;
+}
+
+PVector Flocking::cohesion(Boid boid) {
+	float neighborDist = 50.f;
+
+	PVector result = PVector{ 0, 0 };
+	int neighborCount = 0;
+	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); ++it)
+	{
+		Boid other = (*it);
+		if (&boid != &other) {
+			if (PVector().dist(boid.position, other.position) < neighborDist) {
+				result.add(other.position);
+
+				neighborCount++;
+			}
+		}
+	}
+
+	if (neighborCount == 0) {
+		return result;
+	}
+
+	result.div(neighborCount);
+	result.sub(boid.position);
+	if (result.mag() == 0)
+		return result;
+	result.normalize();
+
+	return result;
+}
+
+PVector Flocking::separation(Boid boid) {
+	float neighborDist = 50.f;
+
+	PVector result = PVector{ 0, 0 };
+	int neighborCount = 0;
+	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); ++it)
+	{
+		Boid other = (*it);
+		if (&boid != &other) {
+			if (PVector().dist(boid.position, other.position) < neighborDist) {
+				other.position.sub(boid.position);
+				result.add(other.position);
+
+				neighborCount++;
+			}
+		}
+	}
+
+	if (neighborCount == 0) {
+		return result;
+	}
+
+	result.x /= neighborCount;
+	result.y /= neighborCount;
+	result.mult(-1);
+	if (result.mag() == 0) {
+		return result;
+	}
+	result.normalize();
+
+	return result;
 }
 
 Boid Flocking::wrapBorder(Boid boid)
@@ -563,7 +670,7 @@ void Flocking::render()
 	glUniform1f(timeLocation, _time);
 
 	// for each boid in list of boids render
-	renderBoid(_boidLeader);
+	// renderBoid(_boidLeader);
 	
 	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
 	{
