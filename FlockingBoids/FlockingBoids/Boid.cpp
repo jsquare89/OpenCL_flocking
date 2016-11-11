@@ -52,6 +52,26 @@ void Boid::Update(float time, int width, int height)
 		position.y -= height;
 }
 
+PVector Boid::Wander()
+{
+	PVector circleCenter = velocity;
+	circleCenter.normalize();
+	circleCenter.mult(WANDER_CIRCLE_DISTANCE);
+
+	PVector displacement = PVector{0, -1};
+	displacement.mult(WANDER_CIRCLE_RADIUS);
+
+	float angle = (float)(rand() % 360 + 1)*(M_PI / 180);
+	float length = displacement.mag();
+	displacement.x = cosf(angle) * length;
+	displacement.y = sinf(angle) * length;
+
+	angle += rand() % 100 / 100 * WANDER_ANGLE_CHANGE - WANDER_ANGLE_CHANGE * 0.5;
+	circleCenter.add(displacement);
+	return circleCenter;
+
+}
+
 PVector Boid::Arrive(PVector target)
 {
 	float targetSpeed = 0.f;

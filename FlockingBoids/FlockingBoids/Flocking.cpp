@@ -9,8 +9,6 @@
 #include "Errors.h"
 #include "OpenCLHelper.h"
 
-
-
 bool Flocking::runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel, float time) {
 
 	cl_int errNum;
@@ -135,7 +133,6 @@ void Flocking::initSystems()
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
 	glClearColor(0.8f, 0.8f, 1.0f, 1.0f);
-
 }
 
 void Flocking::initShaders()
@@ -306,6 +303,7 @@ void Flocking::update(float timeSinceLastFrame)
 {
 	_time += 0.01;
 
+	_boidLeader.acceleration.add(_boidLeader.Wander());
 	_boidLeader.Update(timeSinceLastFrame, _screenWidth, _screenHeight);
 
 	checkFlockNums();
@@ -338,7 +336,7 @@ void Flocking::render()
 	glUniform1f(timeLocation, _time);
 
 	// for each boid in list of boids render
-	renderBoid(_boidLeader);
+	renderLeader();
 	
 	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
 	{
@@ -353,6 +351,44 @@ void Flocking::render()
 	// Swap buffer and draw everything to the screen.
 	SDL_GL_SwapWindow(_window);
 }
+
+void Flocking::renderLeader()
+{
+	PVector center = { _boidLeader.position.x / (_screenWidth / 2) - 1 , _boidLeader.position.y / (_screenHeight / 2) - 1 };
+	Vertex vertexData[3];
+	vertexData[0].position.x = center.x;
+	vertexData[0].position.y = center.y + 0.03;
+
+	vertexData[1].position.x = center.x + 0.015;
+	vertexData[1].position.y = center.y - 0.03;
+
+	vertexData[2].position.x = center.x - 0.015;
+	vertexData[2].position.y = center.y - 0.03;
+
+
+	glGenBuffers(1, &_boidVbo);
+
+	glBindBuffer(GL_ARRAY_BUFFER, _boidVbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexData), vertexData, GL_STATIC_DRAW);
+
+	// Tell opengl that we want to use the first
+	// attribute array. We only need one array right
+	// now since we are only using positon.
+	glEnableVertexAttribArray(0);
+
+	// This is the position attribute pointer
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+	// This is the color attribute pointer
+	glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(Vertex), (void*)offsetof(Vertex, color));
+	glBegin(GL_TRIANGLES);
+	glVertex3f(vertexData[0].position.x, vertexData[0].position.y, 0);
+	glVertex3f(vertexData[1].position.x, vertexData[1].position.y, 0);
+	glVertex3f(vertexData[2].position.x, vertexData[2].position.y, 0);
+	glEnd();
+	glDisableVertexAttribArray(0);
+
+}
+
 
 void Flocking::renderBoid(Boid boid)
 {

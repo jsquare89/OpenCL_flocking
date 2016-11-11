@@ -18,6 +18,9 @@
 #define INCREASE_BOID_AMOUNT (10)
 
 #define MAX_SPEED (50)
+#define WANDER_CIRCLE_DISTANCE (60)
+#define WANDER_CIRCLE_RADIUS (30)
+#define WANDER_ANGLE_CHANGE (0.1)
 #define SEPARATION_RADIUS (50)
 #define ARRIVE_TARGET_RADIUS (30)
 #define ARRIVE_SLOW_RADIUS (75)
@@ -48,6 +51,7 @@ private:
 	void processInput();
 	void update(float timeSinceLastFrame);
 	void render();
+	void renderLeader();
 	void renderBoid(Boid boid);
 
 	void setupFlock();
