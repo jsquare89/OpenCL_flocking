@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL/SDL.h>
+#include <SDL/SDL_ttf.h>
 #include <GL/glew.h>
 #include <CL/cl.h>
 
@@ -14,7 +15,7 @@
 
 #define FLOCK_SIZE (30)
 #define MINBOIDS (10)
-#define MAXBOIDS (1000)
+#define MAXBOIDS (2000)
 #define INCREASE_BOID_AMOUNT (10)
 
 #define MAX_SPEED (50)
@@ -45,6 +46,7 @@ private:
 	void initShaders();
 	void initOpenCL(cl_device_type deviceType);
 	void gameLoop();
+	void fpsCounter();
 	void processInput();
 	void update(float timeSinceLastFrame);
 	void render();
@@ -52,6 +54,10 @@ private:
 
 	void setupFlock();
 	void checkFlockNums();
+	// FPS counter
+	Uint32 startclock = 0;
+	Uint32 deltaclock = 0;
+	Uint32 currentFPS = 0;
 
 	// SDL
 	SDL_Window* _window;

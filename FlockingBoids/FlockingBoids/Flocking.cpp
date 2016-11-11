@@ -90,6 +90,7 @@ Flocking::Flocking() : _screenWidth(1280),
 
 
 	// timer setup
+	startclock = SDL_GetTicks();
 	_currentTime = std::clock();
 
 	initSystems();
@@ -136,6 +137,7 @@ void Flocking::initSystems()
 
 	glClearColor(0.8f, 0.8f, 1.0f, 1.0f);
 
+	runState = RunState::SERIAL; // starts in serial mode
 }
 
 void Flocking::initShaders()
@@ -205,7 +207,7 @@ void Flocking::initOpenCL(cl_device_type deviceType = CL_DEVICE_TYPE_ALL)
 
 void Flocking::gameLoop()
 {
-	runState = RunState::SERIAL; // starts in serial mode
+	
 	while (_gameState != GameState::EXIT)
 	{
 		std::clock_t newTime = std::clock();
@@ -217,9 +219,31 @@ void Flocking::gameLoop()
 		update(timeSinceLastFrame);
 
 		render();
+
+		fpsCounter();
 	}
 }
 
+
+void Flocking::fpsCounter()
+{
+	deltaclock = SDL_GetTicks() - startclock;
+	startclock = SDL_GetTicks();
+
+	if (deltaclock != 0)
+		currentFPS = 1000 / deltaclock;
+
+	std::string mode = "";
+	if (runState == RunState::SERIAL)
+		mode = "serial";
+	else if (runState == RunState::CPU)
+		mode = "CPU";
+	else if (runState == RunState::GPU)
+		mode = "GPU";
+	else if (runState == RunState::CPU_GPU)
+		mode = "CPU&GPU";
+	printf("Mode: %s    FPS: %d    Boids: %d\n", mode.c_str(), currentFPS, numBoids);
+}
 void Flocking::processInput()
 {
 	SDL_Event evnt;
@@ -235,11 +259,9 @@ void Flocking::processInput()
 			switch (evnt.key.keysym.sym)
 			{
 			case SDLK_1:
-				printf("Serial\n");
 				runState = RunState::SERIAL;
 				break;
 			case SDLK_2:
-				printf("CPU\n");
 				runState = RunState::CPU;
 				initOpenCL(CL_DEVICE_TYPE_CPU);
 				break;
@@ -255,13 +277,11 @@ void Flocking::processInput()
 				//increase boid count
 				if (numBoids < MAXBOIDS)
 					numBoids += INCREASE_BOID_AMOUNT;
-				printf("Boid count: %i\n", numBoids);
 				break;
 			case SDLK_a:
 				// decrease boid count
 				if (numBoids > MINBOIDS)
 					numBoids -= INCREASE_BOID_AMOUNT;
-				printf("Boid count: %i\n", numBoids);
 				break;
 			}
 			break;
@@ -288,7 +308,6 @@ void Flocking::checkFlockNums()
 		{
 			_boids.push_back(Boid(_screenWidth / 2 + rand() % 100 - 50, _screenHeight / 2 + rand() % 100 - 50));
 		}
-		printf("The real boid count after updating: %i\n", _boids.size());
 	}
 
 	if (_boids.size() > numBoids)
@@ -298,7 +317,6 @@ void Flocking::checkFlockNums()
 		{
 			_boids.pop_back();
 		}
-		printf("The real boid count after updating: %i\n", _boids.size());
 	}
 }
 
@@ -345,13 +363,12 @@ void Flocking::render()
 		renderBoid(*it);
 	}
 
-
 	_colorProgram.unuse();
 
 	glEnd();
 
 	// Swap buffer and draw everything to the screen.
-	SDL_GL_SwapWindow(_window);
+	SDL_GL_SwapWindow(_window);	
 }
 
 void Flocking::renderBoid(Boid boid)
