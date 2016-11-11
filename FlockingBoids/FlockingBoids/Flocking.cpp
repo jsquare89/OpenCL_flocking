@@ -42,9 +42,9 @@ void cleanupOpenCLModels(cl_context context, cl_uint numOfDevices, cl_command_qu
 
 cl_context createOpenCLContext() {
 	cl_int errNum;
-	cl_platform_id platform;
+	cl_platform_id platform[3];
 	cl_uint numPlatforms;
-	errNum = clGetPlatformIDs(1, &platform, &numPlatforms);
+	errNum = clGetPlatformIDs(3, &platform[0], &numPlatforms);
 	if (!CheckOpenCLError(errNum, "Failed to find any OpenCL platforms.")) {
 		return NULL;
 	}
@@ -57,7 +57,7 @@ cl_context createOpenCLContext() {
 	cl_context_properties contextProperties[] =
 	{
 		CL_CONTEXT_PLATFORM,
-		(cl_context_properties)platform,
+		(cl_context_properties)platform[0],
 		0
 	};
 
@@ -303,8 +303,8 @@ bool Flocking::runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_comm
 
 	std::vector<Boid> result;
 
-	input_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, numBoids * sizeof(Boid), &_boids[0], NULL);
-	output_buffer= clCreateBuffer(context, CL_MEM_READ_WRITE, numBoids * sizeof(Boid), NULL, NULL);
+	input_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, numBoids * sizeof(Boid), &_boids[0], NULL);
+	output_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, numBoids * sizeof(Boid), NULL, NULL);
 	errNum = clEnqueueWriteBuffer(commandQueues[0], input_buffer, CL_FALSE, 0, numBoids * sizeof(Boid), &_boids[0], 0, NULL, &wrEv[numWrEv++]);
 	if (!CheckOpenCLError(errNum, "ERROR writing input buffer.")) {
 		return false;
@@ -319,7 +319,10 @@ bool Flocking::runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_comm
 	errNum = clSetKernelArg(kernel, 0, sizeof(cl_mem), &input_buffer)
 		|| clSetKernelArg(kernel, 1, sizeof(cl_mem), &output_buffer)
 		|| clSetKernelArg(kernel, 2, sizeof(int), &numBoids)
-		|| clSetKernelArg(kernel, 3, sizeof(float), &time);
+		|| clSetKernelArg(kernel, 3, sizeof(float), &time)
+		|| clSetKernelArg(kernel, 4, sizeof(Boid), &_boidLeader)
+		|| clSetKernelArg(kernel, 5, sizeof(int), &_screenWidth)
+	|| clSetKernelArg(kernel, 6, sizeof(int), &_screenHeight);
 
 	if (!CheckOpenCLError(errNum, "ERROR setting kernel arguments")) {
 		return false;
@@ -341,14 +344,14 @@ bool Flocking::runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_comm
 
 	}
 
-	duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
-	std::cout << "OpenCL ran in " << duration << " seconds" << std::endl << std::endl;
+	//duration = (std::clock() - start) / (double)CLOCKS_PER_SEC;
+	//std::cout << "OpenCL ran in " << duration << " seconds" << std::endl << std::endl;
 
-	/*for (int i = 0; i < array_size; i++) {
-	std::cout << result[i] << " ";
-	}*/
-	std::cout << std::endl << std::endl;
-	std::cout << "Executed program successfully." << std::endl;
+	///*for (int i = 0; i < array_size; i++) {
+	//std::cout << result[i] << " ";
+	//}*/
+	//std::cout << std::endl << std::endl;
+	//std::cout << "Executed program successfully." << std::endl;
 
 	return true;
 
@@ -487,6 +490,7 @@ void Flocking::initOpenCL()
 
 void Flocking::gameLoop()
 {
+	runState = RunState::CPU; // starts in serial mode
 	while (_gameState != GameState::EXIT)
 	{
 		std::clock_t newTime = std::clock();
@@ -512,8 +516,36 @@ void Flocking::processInput()
 		case SDL_QUIT:
 			_gameState = GameState::EXIT;
 			break;
-		case SDL_MOUSEMOTION:
-			// std::cout << evnt.motion.x << " " << evnt.motion.y << std::endl;
+		case SDL_KEYDOWN:
+			switch (evnt.key.keysym.sym)
+			{
+			case SDLK_1:
+				printf("Serial\n");
+				runState = RunState::SERIAL;
+				break;
+			case SDLK_2:
+				printf("CPU\n");
+				runState = RunState::CPU;
+				break;
+			case SDLK_3:
+				runState = RunState::GPU;
+				break;
+			case SDLK_4:
+				runState = RunState::CPU_GPU;
+				break;
+			case SDLK_q:
+				//increase boid count
+				if (numBoids < MAXBOIDS)
+					numBoids += INCREASE_BOID_AMOUNT;
+				printf("Boid count: %i\n", numBoids);
+				break;
+			case SDLK_a:
+				// decrease boid count
+				if (numBoids > MINBOIDS)
+					numBoids -= INCREASE_BOID_AMOUNT;
+				printf("Boid count: %i\n", numBoids);
+				break;
+			}
 			break;
 		}
 	}
@@ -521,34 +553,59 @@ void Flocking::processInput()
 
 void Flocking::setupFlock()
 {
-	// _boidLeader = Boid(_screenWidth / 2, _screenHeight / 2);
+	_boidLeader = Boid(_screenWidth / 2, _screenHeight / 2);
 	for (int i = 0; i < numBoids; i++)
 	{
 		_boids.push_back(Boid(_screenWidth / 2 + rand() % 100 - 50, _screenHeight / 2 + rand() % 100 - 50));
 	}
 }
 
-void Flocking::update(float timeSinceLastFrame)
+void Flocking::checkFlockNums()
 {
 
-	runOpenCLKernel(context, numOfDevices, command_queues, kernel, timeSinceLastFrame);
-	// _boidLeader.Wander();
-	// _boidLeader = wrapBorder(_boidLeader);
-	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
+	if (_boids.size() < numBoids)
 	{
-		//Boid boid = (*it);
-		// (*it).position.add((*it).velocity);
+		int numToAdd = numBoids - _boids.size();
+		for (int i = numToAdd; i > 0; i--)
+		{
+			_boids.push_back(Boid(_screenWidth / 2 + rand() % 100 - 50, _screenHeight / 2 + rand() % 100 - 50));
+		}
+		printf("The real boid count after updating: %i\n", _boids.size());
+	}
 
-		//(*it).velocity.add(alignment(boid));
-		//(*it).velocity.add(cohesion(boid));
-		//PVector separationValue = separation(boid);
-		//separationValue.mult(2);
-		//(*it).velocity.add(separationValue);
-		//(*it).velocity.normalize();
-		//(*it).velocity.mult(50.0f);
-		//(*it).velocity.mult(timeSinceLastFrame);
+	if (_boids.size() > numBoids)
+	{
+		int numToRemove = _boids.size() - numBoids;
+		for (int i = numToRemove; i > 0; i--)
+		{
+			_boids.pop_back();
+		}
+		printf("The real boid count after updating: %i\n", _boids.size());
+	}
+}
 
-		*it = wrapBorder(*it);
+void Flocking::update(float timeSinceLastFrame)
+{
+	_time += 0.01;
+
+	_boidLeader.Wander(timeSinceLastFrame);
+	_boidLeader = wrapBorder(_boidLeader);
+
+	checkFlockNums();
+
+	if (runState == RunState::SERIAL)
+	{
+		for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
+		{
+			(*it).Flock(_boids, _boidLeader, timeSinceLastFrame);
+			(*it).Update(timeSinceLastFrame);
+			(*it) = wrapBorder(*it);
+		}
+	}
+	else if (runState == CPU)
+	{
+		runOpenCLKernel(context, numOfDevices, command_queues, kernel, timeSinceLastFrame);
+		runState == RunState::SERIAL; // debug check
 	}
 
 }
@@ -670,7 +727,7 @@ void Flocking::render()
 	glUniform1f(timeLocation, _time);
 
 	// for each boid in list of boids render
-	// renderBoid(_boidLeader);
+	renderBoid(_boidLeader);
 	
 	for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
 	{

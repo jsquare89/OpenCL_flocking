@@ -16,13 +16,14 @@ struct Boid {
 	Boid();
 	Boid(float x, float y);
 	void Run(std::vector<Boid> boids, Boid leader);
-	// void Flock(std::vector<Boid> boids, Boid leader);
-	void Update();
-	//void ApplyForce(PVector force);
+	void Flock(std::vector<Boid> boids, Boid leader, float time);
+	void Update(float time);
+	void ApplyForce(PVector force);
 
-	//void Wander();
+	void Wander(float time);
 	//PVector Seek(PVector target);
-	//PVector Seperation(std::vector<Boid> &boids);
+	PVector Arrive(PVector target);
+	PVector Separation(std::vector<Boid> &boids);
 	//PVector Align(std::vector<Boid> &boids);
 	//PVector Cohesion(std::vector<Boid> &boids);
 

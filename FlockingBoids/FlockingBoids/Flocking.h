@@ -11,11 +11,15 @@
 #include "Boid.h"
 
 #define F (8)
-#define MAX_NUM_DEV (4)
+#define MAX_NUM_DEV (1)
 
-#define FLOCK_SIZE (500)
+#define FLOCK_SIZE (30)
+#define MINBOIDS (10)
+#define MAXBOIDS (1000)
+#define INCREASE_BOID_AMOUNT (10)
 
 enum class GameState { PLAY, EXIT };
+enum RunState { SERIAL, GPU, CPU, CPU_GPU };
 
 class Flocking
 {
@@ -40,6 +44,7 @@ private:
 	void renderBoid(Boid boid);
 
 	void setupFlock();
+	void checkFlockNums();
 	Boid wrapBorder(Boid boid);
 
 	// SDL
@@ -67,6 +72,7 @@ private:
 
 	Boid _boidLeader;
 	std::vector<Boid> _boids;
-	const int numBoids = FLOCK_SIZE;
+	int numBoids = FLOCK_SIZE;
+	RunState runState;
 };
 

@@ -13,44 +13,127 @@ Boid::Boid(float x, float y)
 	float angle = (float)(rand() % 360 + 1)*(M_PI / 180);
 	velocity = PVector{ (float)cos(angle),(float)sin(angle) };
 	position = PVector{ x, y };
-	maxSpeed = 1.0;
+	maxSpeed = 25.0;
 	maxForce = 0.9;
 }
 
 void Boid::Run(std::vector<Boid> boids, Boid leader)
 {
 	//Flock(boids, leader);
-	Update();
+	//Update();
 }
 
-//void Boid::Flock(std::vector<Boid> boids, Boid leader)
-//{
-//	// get new acceleration based on 3 rules
-//	//PVector sep = Seperation(boids);
-//	
-//	PVector seek = Seek(leader.position);
-//	//sep.mult(5);
-//	//ApplyForce(sep);
-//	ApplyForce(seek);
-//}
+void Boid::Flock(std::vector<Boid> boids, Boid leader, float time)
+{
+	// get new acceleration based on 3 rules
 
-void Boid::Update()
+
+	//PVector seek = Seek(leader.position);
+	PVector arrive = Arrive(leader.position);
+	PVector sep = Separation(boids);
+	//PVector ali = Align(boids);
+	//PVector coh = Cohesion(boids);
+
+	arrive.mult(1);
+	sep.mult(2);
+	//ali.mult(1);
+	//coh.mult(1);
+	ApplyForce(arrive);
+	ApplyForce(sep);
+	//ApplyForce(ali);
+	//ApplyForce(coh);
+}
+
+void Boid::Update(float time)
 {
 	velocity.add(acceleration);
-	velocity.limit(maxSpeed);
-	position.add(velocity);
+	//velocity.limit(maxSpeed);
+	velocity.normalize();
+	velocity.mult(maxSpeed);
+
+	PVector velocityCopy = velocity;
+	velocityCopy.mult(time);
+	position.add(velocityCopy);
 	acceleration.mult(0); // Reset acceleration
 }
 
-//void Boid::ApplyForce(PVector force)
-//{
-//	acceleration.add(force);
-//}
-//
-//void Boid::Wander()
-//{
-//	Update();
-//}
+void Boid::ApplyForce(PVector force)
+{
+	acceleration.add(force);
+}
+
+void Boid::Wander(float time)
+{
+	Update(time);
+}
+
+PVector Boid::Arrive(PVector target)
+{
+	float targetRadius = 30.f;
+	float timeToTarget = 0.1f;
+	float targetSpeed = 0.f;
+	float slowRadius = 75.f;
+
+	PVector direction = PVector().sub(target, position);
+	float dist = direction.mag();
+
+	if (dist < targetRadius)
+		return PVector{ 0,0 };
+	if (dist > targetRadius)
+		targetSpeed = maxSpeed;
+	else
+		targetSpeed = maxSpeed*dist / slowRadius;
+
+	PVector targetVelocity = direction;
+	targetVelocity.normalize();
+	targetVelocity.mult(targetSpeed);
+
+	PVector steer = PVector().sub(targetVelocity, velocity);
+	steer.div(timeToTarget);
+
+	if (steer.mag() > maxForce)
+	{
+		steer.normalize();
+		steer.mult(maxSpeed);
+	}
+
+	return steer;
+}
+
+PVector Boid::Separation(std::vector<Boid> &boids)
+{
+	float separationRadius = 30.0f;
+	PVector steer{ 0,0 };
+	int neighbourCount = 0;
+	// check each boid in ssystem, check if its close
+	for (std::vector<Boid>::iterator neighborItr = boids.begin(); neighborItr != boids.end(); ++neighborItr)
+	{
+		// get distance of neighbor
+		float d = PVector().dist(position, neighborItr->position);
+		if ((d > 0) && (d <= separationRadius))
+		{
+			// Calculate vector point away from neighbor
+			steer.x += neighborItr->position.x - position.x;
+			steer.y += neighborItr->position.y - position.y;
+			neighbourCount++; // Keep track of how many
+		}
+	}
+	// Average -- dive by amount
+	if (neighbourCount > 0)
+	{
+		steer.div((float)neighbourCount);
+		steer.mult(-1);
+	}
+
+	if (steer.mag() > 0)
+	{
+		steer.normalize();
+		steer.mult(maxSpeed);
+		steer.limit(maxForce);
+	}
+	return steer;
+}
+
 //
 //PVector Boid::Seek(PVector target)
 //{
