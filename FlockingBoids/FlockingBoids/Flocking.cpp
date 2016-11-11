@@ -22,7 +22,7 @@ bool CheckOpenCLError(cl_int errNum, const char *errMsg)
 	return true;
 }
 
-void cleanupOpenCLModels(cl_context context, cl_uint numOfDevices, cl_command_queue *commandQueues, cl_program program, cl_kernel kernel) {
+void cleanupOpenCLModels(cl_context context, cl_uint *numOfDevices, cl_command_queue *commandQueues, cl_program program, cl_kernel kernel) {
 	if (kernel != 0)
 		clReleaseKernel(kernel);
 
@@ -30,7 +30,7 @@ void cleanupOpenCLModels(cl_context context, cl_uint numOfDevices, cl_command_qu
 		clReleaseProgram(program);
 
 	if (commandQueues != 0) {
-		for (int i = 0; i < numOfDevices; i++) {
+		for (int i = 0; i < *numOfDevices; i++) {
 			clReleaseCommandQueue(commandQueues[i]);
 		}
 	}
@@ -38,13 +38,15 @@ void cleanupOpenCLModels(cl_context context, cl_uint numOfDevices, cl_command_qu
 	if (context != 0) 
 		clReleaseContext(context);
 
+	*numOfDevices = 0;
+
 }
 
-cl_context createOpenCLContext() {
+cl_context createOpenCLContext(cl_device_type deviceType) {
 	cl_int errNum;
-	cl_platform_id platform[3];
+	cl_platform_id platform[4];
 	cl_uint numPlatforms;
-	errNum = clGetPlatformIDs(3, &platform[0], &numPlatforms);
+	errNum = clGetPlatformIDs(4, &platform[0], &numPlatforms);
 	if (!CheckOpenCLError(errNum, "Failed to find any OpenCL platforms.")) {
 		return NULL;
 	}
@@ -62,7 +64,7 @@ cl_context createOpenCLContext() {
 	};
 
 	// Create a context and command queue on the device
-	cl_context context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_ALL, NULL, NULL, &errNum);
+	cl_context context = clCreateContextFromType(contextProperties, deviceType, NULL, NULL, &errNum);
 	if (!CheckOpenCLError(errNum, "Failed to create an OpenCL GPU or CPU context.")) {
 		return NULL;
 	}
@@ -76,6 +78,7 @@ cl_uint countOpenlCLDevices(cl_context context) {
 	cl_uint numOfDevices;
 	errNum = clGetContextInfo(context, CL_CONTEXT_NUM_DEVICES, sizeof(numOfDevices), (void *)&numOfDevices, &retSize);
 	if (!CheckOpenCLError(errNum, "Could not get context info!")) {
+		numOfDevices = 0;
 		return NULL;
 	}
 	std::cout << std::endl << "There are " << numOfDevices << " devices." << std::endl;
@@ -382,8 +385,6 @@ Flocking::Flocking() : _screenWidth(1280),
 
 	initShaders();
 
-	initOpenCL();
-
 	setupFlock();
 
 	gameLoop();
@@ -434,10 +435,12 @@ void Flocking::initShaders()
 	_colorProgram.linkShaders();
 }
 
-void Flocking::initOpenCL()
+void Flocking::initOpenCL(cl_device_type deviceType = CL_DEVICE_TYPE_ALL)
 {
+	cleanupOpenCLModels(context, &numOfDevices, command_queues, program, kernel);
+
 	// Create a context and command queue on the device
-	context = createOpenCLContext();
+	context = createOpenCLContext(deviceType);
 	if (!context) {
 		return;
 	}
@@ -447,7 +450,7 @@ void Flocking::initOpenCL()
 	// Get all the CPU and GPU devices
 	devices = retrieveOpenCLDevices(context, numOfDevices);
 	if (!devices) {
-		cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+		cleanupOpenCLModels(context, &numOfDevices, command_queues, program, kernel);
 	}
 
 	// Get device information for each device and assign command queues
@@ -458,14 +461,14 @@ void Flocking::initOpenCL()
 
 		if (!printOpenCLDeviceInfo(devices[i])) {
 			free(devices);
-			cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+			cleanupOpenCLModels(context, &numOfDevices, command_queues, program, kernel);
 		}
 
 		// create command queue for each device
 		command_queues[i] = createOpenCLCommandQueue(context, devices[i]);
 		if (!command_queues[i]) {
 			free(devices);
-			cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+			cleanupOpenCLModels(context, &numOfDevices, command_queues, program, kernel);
 			return;
 		}
 
@@ -476,21 +479,21 @@ void Flocking::initOpenCL()
 	// create program
 	program = createOpenCLProgram(context, numOfDevices, devices, KERNEL_FILE);
 	if (!program) {
-		cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+		cleanupOpenCLModels(context, &numOfDevices, command_queues, program, kernel);
 		return;
 	}
 
 	// create kernel
 	kernel = createOpenCLKernel(program, KERNEL_FUNCTION);
 	if (!kernel) {
-		cleanupOpenCLModels(context, numOfDevices, command_queues, program, kernel);
+		cleanupOpenCLModels(context, &numOfDevices, command_queues, program, kernel);
 		return;
 	}
 }
 
 void Flocking::gameLoop()
 {
-	runState = RunState::CPU; // starts in serial mode
+	runState = RunState::SERIAL; // starts in serial mode
 	while (_gameState != GameState::EXIT)
 	{
 		std::clock_t newTime = std::clock();
@@ -526,12 +529,15 @@ void Flocking::processInput()
 			case SDLK_2:
 				printf("CPU\n");
 				runState = RunState::CPU;
+				initOpenCL(CL_DEVICE_TYPE_CPU);
 				break;
 			case SDLK_3:
 				runState = RunState::GPU;
+				initOpenCL(CL_DEVICE_TYPE_GPU);
 				break;
 			case SDLK_4:
 				runState = RunState::CPU_GPU;
+				initOpenCL(CL_DEVICE_TYPE_ALL);
 				break;
 			case SDLK_q:
 				//increase boid count
@@ -593,7 +599,7 @@ void Flocking::update(float timeSinceLastFrame)
 
 	checkFlockNums();
 
-	if (runState == RunState::SERIAL)
+	if (runState == SERIAL)
 	{
 		for (std::vector<Boid>::iterator it = _boids.begin(); it != _boids.end(); it++)
 		{
@@ -602,10 +608,10 @@ void Flocking::update(float timeSinceLastFrame)
 			(*it) = wrapBorder(*it);
 		}
 	}
-	else if (runState == CPU)
+	else
 	{
-		runOpenCLKernel(context, numOfDevices, command_queues, kernel, timeSinceLastFrame);
-		runState == RunState::SERIAL; // debug check
+		if (context && numOfDevices && command_queues && kernel)
+			runOpenCLKernel(context, numOfDevices, command_queues, kernel, timeSinceLastFrame);
 	}
 
 }

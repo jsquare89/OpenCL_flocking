@@ -33,7 +33,7 @@ private:
 
 	void initSystems();
 	void initShaders();
-	void initOpenCL();
+	void initOpenCL(cl_device_type deviceType);
 	void gameLoop();
 	void processInput();
 	void update(float timeSinceLastFrame);
@@ -62,6 +62,8 @@ private:
 	cl_program program;
 	cl_kernel kernel;
 	cl_context context;
+	cl_context gpu_context;
+	cl_context cpu_context;
 	cl_command_queue *command_queues;
 	cl_device_id *devices;
 	cl_uint numOfDevices;
