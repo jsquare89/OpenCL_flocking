@@ -4,25 +4,17 @@
 // https://github.com/Edgeworth/Boids
 
 
-#define MAX_SPEED 25
-#define SEPARATION_RADIUS (30)
+#define MAX_SPEED 50
+#define SEPARATION_RADIUS (50)
 #define ARRIVE_TARGET_RADIUS (30)
 #define ARRIVE_SLOW_RADIUS (75)
 #define ARRIVE_TIME_TO_TARGET (0.1f)
-#define SEPARATION_WEIGHT (2)
+#define SEPARATION_WEIGHT (3)
 #define ARRIVAL_WEIGHT (1)
 
 typedef struct {
 	float2 position, velocity, acceleration;
 } Boid;
-
-__kernel void hello_kernel(__global const float *a, 
-	__global const float *b, 
-	__global float *result) {
-	int gid = get_global_id(0);
-
-	result[gid] = a[gid] + b[gid];
-}
 
 float magnitude(float2 v) {
 	return sqrt(v.x * v.x + v.y * v.y);;

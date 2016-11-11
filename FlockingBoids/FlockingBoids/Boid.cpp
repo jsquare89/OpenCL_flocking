@@ -27,7 +27,7 @@ void Boid::Flock(std::vector<Boid> boids, Boid leader, float time)
 	acceleration.add(sep);
 }
 
-void Boid::Update(float time)
+void Boid::Update(float time, int width, int height)
 {
 	velocity.add(acceleration);
 	if (velocity.mag() > MAX_SPEED) {
@@ -39,11 +39,16 @@ void Boid::Update(float time)
 	velocityCopy.mult(time);
 	position.add(velocityCopy);
 	acceleration.mult(0); // Reset acceleration
-}
 
-void Boid::Wander(float time)
-{
-	Update(time);
+	// wrap border
+	if (position.x < 0)
+		position.x += width;
+	else if (position.y < 0)
+		position.y += width;
+	else if (position.x > height)
+		position.x -= height;
+	else if (position.y > height)
+		position.y -= height;
 }
 
 PVector Boid::Arrive(PVector target)

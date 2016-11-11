@@ -10,7 +10,6 @@
 #include "GLSLProgram.h"
 #include "Boid.h"
 
-#define F (8)
 #define MAX_NUM_DEV (1)
 
 #define FLOCK_SIZE (30)
@@ -18,13 +17,16 @@
 #define MAXBOIDS (1000)
 #define INCREASE_BOID_AMOUNT (10)
 
-#define MAX_SPEED (25)
-#define SEPARATION_RADIUS (30)
+#define MAX_SPEED (50)
+#define SEPARATION_RADIUS (50)
 #define ARRIVE_TARGET_RADIUS (30)
 #define ARRIVE_SLOW_RADIUS (75)
 #define ARRIVE_TIME_TO_TARGET (0.1f)
-#define SEPARATION_WEIGHT (2)
+#define SEPARATION_WEIGHT (3)
 #define ARRIVAL_WEIGHT (1)
+
+#define KERNEL_FILE ("./flocking.cl")
+#define KERNEL_FUNCTION ("update")
 
 enum class GameState { PLAY, EXIT };
 enum RunState { SERIAL, GPU, CPU, CPU_GPU };
@@ -45,15 +47,11 @@ private:
 	void gameLoop();
 	void processInput();
 	void update(float timeSinceLastFrame);
-	PVector alignment(Boid boid);
-	PVector cohesion(Boid boid);
-	PVector separation(Boid boid);
 	void render();
 	void renderBoid(Boid boid);
 
 	void setupFlock();
 	void checkFlockNums();
-	Boid wrapBorder(Boid boid);
 
 	// SDL
 	SDL_Window* _window;
@@ -75,7 +73,6 @@ private:
 	cl_command_queue *command_queues;
 	cl_device_id *devices;
 	cl_uint numOfDevices;
-	cl_mem buffers[3];
 	cl_mem input_buffer;
 	cl_mem output_buffer;
 	bool runOpenCLKernel(cl_context context, cl_uint numOfDevices, cl_command_queue* commandQueues, cl_kernel kernel, float time);

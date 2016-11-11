@@ -16,9 +16,7 @@ struct Boid {
 	Boid();
 	Boid(float x, float y);
 	void Flock(std::vector<Boid> boids, Boid leader, float time);
-	void Update(float time);
-
-	void Wander(float time);
+	void Update(float time, int width, int height);
 	PVector Arrive(PVector target);
 	PVector Separation(std::vector<Boid> &boids);
 
