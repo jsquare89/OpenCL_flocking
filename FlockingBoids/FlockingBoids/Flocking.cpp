@@ -356,15 +356,16 @@ void Flocking::render()
 
 void Flocking::renderBoid(Boid boid)
 {
+	PVector center = { boid.position.x / (_screenWidth / 2) - 1 , boid.position.y / (_screenHeight / 2) - 1 };
 	Vertex vertexData[3];
-	vertexData[0].position.x = boid.position.x / (1280 / 2) - 1;
-	vertexData[0].position.y = boid.position.y / (720 / 2) - 1 + 0.03;
+	vertexData[0].position.x = center.x;
+	vertexData[0].position.y = center.y + 0.03;
 
-	vertexData[1].position.x = boid.position.x / (1280 / 2) - 1 + 0.015;
-	vertexData[1].position.y = boid.position.y / (720 / 2) - 1 - 0.03;
+	vertexData[1].position.x = center.x + 0.015;
+	vertexData[1].position.y = center.y - 0.03;
 
-	vertexData[2].position.x = boid.position.x / (1280 / 2) - 1 - 0.015;
-	vertexData[2].position.y = boid.position.y / (720 / 2) - 1 - 0.03;
+	vertexData[2].position.x = center.x - 0.015;
+	vertexData[2].position.y = center.y - 0.03;
 
 	glGenBuffers(1, &_boidVbo);
 

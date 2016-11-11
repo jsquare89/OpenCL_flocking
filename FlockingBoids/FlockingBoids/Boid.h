@@ -9,9 +9,8 @@
 #include <vector>
 
 struct Boid {
-	PVector position;
-	PVector velocity;
-	PVector acceleration;
+	PVector position, velocity, acceleration;
+	float rotation, _temp; // weird that OpenCL don't like me defining only one float
 
 	Boid();
 	Boid(float x, float y);

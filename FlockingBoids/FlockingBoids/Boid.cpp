@@ -9,8 +9,8 @@ Boid::Boid()
 Boid::Boid(float x, float y)
 {
 	acceleration = PVector{ 0,0 };
-	float angle = (float)(rand() % 360 + 1)*(M_PI / 180);
-	velocity = PVector{ (float)cos(angle),(float)sin(angle) };
+	rotation = (float)(rand() % 360 + 1)*(M_PI / 180);
+	velocity = PVector{ (float)cos(rotation), (float)sin(rotation) };
 	velocity.normalize();
 	velocity.mult(MAX_SPEED);
 	position = PVector{ x, y };
@@ -34,6 +34,7 @@ void Boid::Update(float time, int width, int height)
 		velocity.normalize();
 		velocity.mult(MAX_SPEED);
 	}
+	rotation = atan2(velocity.y, velocity.x);
 
 	PVector velocityCopy = velocity;
 	velocityCopy.mult(time);
@@ -45,8 +46,8 @@ void Boid::Update(float time, int width, int height)
 		position.x += width;
 	else if (position.y < 0)
 		position.y += width;
-	else if (position.x > height)
-		position.x -= height;
+	else if (position.x > width)
+		position.x -= width;
 	else if (position.y > height)
 		position.y -= height;
 }

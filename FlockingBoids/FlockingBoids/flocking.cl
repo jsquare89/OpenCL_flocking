@@ -3,7 +3,6 @@
 // https://github.com/okinp/clBoids/
 // https://github.com/Edgeworth/Boids
 
-
 #define MAX_SPEED 50
 #define SEPARATION_RADIUS (50)
 #define ARRIVE_TARGET_RADIUS (30)
@@ -14,6 +13,7 @@
 
 typedef struct {
 	float2 position, velocity, acceleration;
+	float rotation, _temp; // weird that OpenCL don't like me defining only one float
 } Boid;
 
 float magnitude(float2 v) {
@@ -89,6 +89,8 @@ __kernel void update(__global const Boid *in_buffer,
 	if (magnitude(out_buffer[gid].velocity) > MAX_SPEED) {
 		out_buffer[gid].velocity = normalized(out_buffer[gid].velocity) * MAX_SPEED;
 	}
+
+	out_buffer[gid].rotation = atan2(out_buffer[gid].velocity.y, out_buffer[gid].velocity.x);
 
 	out_buffer[gid].position = out_buffer[gid].velocity * time + in_buffer[gid].position;
 	out_buffer[gid].acceleration *= 0; // reset
