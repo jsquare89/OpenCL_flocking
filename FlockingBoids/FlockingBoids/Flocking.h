@@ -18,6 +18,14 @@
 #define MAXBOIDS (1000)
 #define INCREASE_BOID_AMOUNT (10)
 
+#define MAX_SPEED (25)
+#define SEPARATION_RADIUS (30)
+#define ARRIVE_TARGET_RADIUS (30)
+#define ARRIVE_SLOW_RADIUS (75)
+#define ARRIVE_TIME_TO_TARGET (0.1f)
+#define SEPARATION_WEIGHT (2)
+#define ARRIVAL_WEIGHT (1)
+
 enum class GameState { PLAY, EXIT };
 enum RunState { SERIAL, GPU, CPU, CPU_GPU };
 
